@@ -36,3 +36,79 @@ export const ErrorResponseSchema = z.object({
   }),
 });
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+export const CardholderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1),
+  createdAt: z.string(),
+});
+export type CardholderDto = z.infer<typeof CardholderSchema>;
+
+export const CreateCardholderSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Cardholder name cannot be empty'),
+  })
+  .strict();
+export type CreateCardholderInput = z.infer<typeof CreateCardholderSchema>;
+
+export const UpdateCardholderSchema = CreateCardholderSchema;
+export type UpdateCardholderInput = z.infer<typeof UpdateCardholderSchema>;
+
+export const CardSchema = z.object({
+  id: z.string().min(1),
+  cardholderId: z.string().min(1),
+  lastFourDigits: z
+    .string()
+    .regex(/^\d{4}$/, 'Last four digits must be exactly 4 numeric digits'),
+  provider: CardProviderSchema,
+  nickname: z.string().trim().min(1),
+  createdAt: z.string(),
+});
+export type CardDto = z.infer<typeof CardSchema>;
+
+export const CreateCardSchema = z
+  .object({
+    cardholderId: z.string().trim().min(1, 'cardholderId is required'),
+    lastFourDigits: z
+      .string()
+      .regex(/^\d{4}$/, 'Last four digits must be exactly 4 numeric digits'),
+    provider: CardProviderSchema,
+    nickname: z.string().trim().min(1, 'Card nickname is required'),
+  })
+  .strict();
+export type CreateCardInput = z.infer<typeof CreateCardSchema>;
+
+export const UpdateCardSchema = CreateCardSchema.partial()
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for update',
+  });
+export type UpdateCardInput = z.infer<typeof UpdateCardSchema>;
+
+export const CategorySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1),
+  spendingNature: SpendingNatureSchema,
+  color: z.string().trim().min(1),
+  budgetTargetIls: z.number().positive().nullable(),
+  sortOrder: z.number().int(),
+});
+export type CategoryDto = z.infer<typeof CategorySchema>;
+
+export const CreateCategorySchema = z
+  .object({
+    name: z.string().trim().min(1, 'Category name is required'),
+    spendingNature: SpendingNatureSchema,
+    color: z.string().trim().min(1, 'Category color is required'),
+    budgetTargetIls: z.number().positive().nullable().optional(),
+    sortOrder: z.number().int().optional(),
+  })
+  .strict();
+export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>;
+
+export const UpdateCategorySchema = CreateCategorySchema.partial()
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for update',
+  });
+export type UpdateCategoryInput = z.infer<typeof UpdateCategorySchema>;

@@ -18,6 +18,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@bills/domain": "workspace:*",
     "@bills/shared": "workspace:*",
     "drizzle-orm": "^0.40.0"
   },

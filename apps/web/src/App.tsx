@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HealthResponseSchema, type HealthResponse } from '@bills/shared';
+import { HouseholdSettings } from './components/HouseholdSettings.js';
 
 type WorkflowTab = 'dashboard' | 'inbox' | 'coverage' | 'settings';
 
@@ -140,12 +141,18 @@ export function App(): React.ReactElement {
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              {currentNav.heading}
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">{currentNav.subtitle}</p>
-          </div>
+          {activeTab === 'settings' ? (
+            <HouseholdSettings />
+          ) : (
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {currentNav.heading}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {currentNav.subtitle}
+              </p>
+            </div>
+          )}
         </section>
       </main>
     </div>

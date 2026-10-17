@@ -7,6 +7,7 @@ import {
   type BetterSQLite3Database,
 } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema.js';
+import { seedDefaultHouseholdData } from './seed.js';
 
 export type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -169,6 +170,8 @@ export function createDatabase(
     schema,
   });
 
+  seedDefaultHouseholdData(db);
+
   return {
     db,
     sqlite,
@@ -179,4 +182,5 @@ export function createDatabase(
 }
 
 export * from './schema.js';
-export { eq } from 'drizzle-orm';
+export { seedDefaultHouseholdData } from './seed.js';
+export { asc, eq } from 'drizzle-orm';

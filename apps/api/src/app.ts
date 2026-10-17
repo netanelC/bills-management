@@ -4,9 +4,10 @@ import helmet from '@fastify/helmet';
 import type { AppDatabase, SqliteDatabase } from '@bills/db';
 import { registerErrorHandlers } from './errors/app-error.js';
 import { registerHealthRoutes } from './components/health/api.js';
+import { registerHouseholdRoutes } from './components/household/api.js';
 
 export interface BuildServerOptions {
-  db?: AppDatabase;
+  db: AppDatabase;
   sqlite: SqliteDatabase;
   logger?: boolean;
   corsOrigin?: string;
@@ -28,6 +29,10 @@ export async function buildServer(
 
   await app.register(registerHealthRoutes, {
     sqlite: options.sqlite,
+  });
+
+  await app.register(registerHouseholdRoutes, {
+    db: options.db,
   });
 
   return app;
