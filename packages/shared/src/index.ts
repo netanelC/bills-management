@@ -432,4 +432,61 @@ export type MergeMerchantsResponseDto = z.infer<
   typeof MergeMerchantsResponseSchema
 >;
 
+export const SpendingNatureBreakdownItemSchema = z.object({
+  spendingNature: SpendingNatureSchema,
+  totalIls: z.number(),
+  sharePercent: z.number(),
+  transactionCount: z.number().int().nonnegative(),
+});
+export type SpendingNatureBreakdownItemDto = z.infer<
+  typeof SpendingNatureBreakdownItemSchema
+>;
+
+export const CardholderBreakdownItemSchema = z.object({
+  cardholderId: z.string(),
+  cardholderName: z.string(),
+  totalIls: z.number(),
+  sharePercent: z.number(),
+  transactionCount: z.number().int().nonnegative(),
+});
+export type CardholderBreakdownItemDto = z.infer<
+  typeof CardholderBreakdownItemSchema
+>;
+
+export const CategoryAnalyticsItemSchema = z.object({
+  categoryId: z.string().nullable(),
+  categoryName: z.string(),
+  spendingNature: SpendingNatureSchema.nullable(),
+  color: z.string(),
+  totalIls: z.number(),
+  sharePercent: z.number(),
+  transactionCount: z.number().int().nonnegative(),
+  previousMonthIls: z.number(),
+  deltaVsPreviousMonthIls: z.number(),
+  historicalAverageIls: z.number(),
+  budgetTargetIls: z.number().positive().nullable(),
+  budgetUtilizationPercent: z.number().nullable(),
+  isOverBudget: z.boolean(),
+});
+export type CategoryAnalyticsItemDto = z.infer<
+  typeof CategoryAnalyticsItemSchema
+>;
+
+export const MonthlyAnalyticsResponseSchema = z.object({
+  selectedBillingMonth: BillingMonthSchema.nullable(),
+  availableBillingMonths: z.array(BillingMonthSchema),
+  totalNetSpendIls: z.number(),
+  trailingAverageSpendIls: z.number(),
+  deltaVsTrailingAverageIls: z.number(),
+  deltaVsTrailingAveragePercent: z.number().nullable(),
+  previousBillingMonth: BillingMonthSchema.nullable(),
+  previousMonthSpendIls: z.number(),
+  spendingNatureBreakdown: z.array(SpendingNatureBreakdownItemSchema),
+  cardholderBreakdown: z.array(CardholderBreakdownItemSchema),
+  categoryBreakdown: z.array(CategoryAnalyticsItemSchema),
+});
+export type MonthlyAnalyticsResponseDto = z.infer<
+  typeof MonthlyAnalyticsResponseSchema
+>;
+
 

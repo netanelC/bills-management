@@ -3,6 +3,7 @@ import multipart from '@fastify/multipart';
 import { z } from 'zod';
 import {
   BillingMonthSchema,
+  SpendingNatureSchema,
   StatementCommitRequestSchema,
   StatementPreviewJsonRequestSchema,
   UpdateTransactionSchema,
@@ -16,6 +17,19 @@ const TransactionsQuerySchema = z.object({
   billingMonth: BillingMonthSchema.optional(),
   cardholderId: z.string().trim().min(1).optional(),
   cardId: z.string().trim().min(1).optional(),
+  categoryId: z.string().trim().min(1).optional(),
+  spendingNature: SpendingNatureSchema.optional(),
+  merchantId: z.string().trim().min(1).optional(),
+  search: z.string().optional(),
+  includeExcluded: z.enum(['true', 'false']).optional(),
+});
+
+const MonthlyAnalyticsQuerySchema = z.object({
+  billingMonth: BillingMonthSchema.optional(),
+  cardholderId: z.string().trim().min(1).optional(),
+  cardId: z.string().trim().min(1).optional(),
+  categoryId: z.string().trim().min(1).optional(),
+  spendingNature: SpendingNatureSchema.optional(),
 });
 
 const TransactionIdParamsSchema = z.object({
@@ -97,8 +111,20 @@ export async function registerStatementsRoutes(
 
   app.get('/api/transactions', async (request, reply) => {
     const query = TransactionsQuerySchema.parse(request.query);
-    const transactions = service.listTransactions(query);
+    const transactions = service.listTransactions({
+      ...query,
+      includeExcluded:
+        query.includeExcluded === undefined
+          ? undefined
+          : query.includeExcluded === 'true',
+    });
     return reply.status(200).send({ transactions });
+  });
+
+  app.get('/api/analytics/monthly', async (request, reply) => {
+    const query = MonthlyAnalyticsQuerySchema.parse(request.query);
+    const analytics = service.getMonthlyAnalytics(query);
+    return reply.status(200).send(analytics);
   });
 
   app.patch('/api/transactions/:id', async (request, reply) => {

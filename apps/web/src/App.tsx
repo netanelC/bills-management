@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { HealthResponseSchema, type HealthResponse } from '@bills/shared';
 import { HouseholdSettings } from './components/HouseholdSettings.js';
+import { MonthlyDashboard } from './components/MonthlyDashboard.js';
 import { StatementCoverage } from './components/StatementCoverage.js';
 import { UncategorizedInbox } from './components/UncategorizedInbox.js';
 
@@ -73,9 +74,6 @@ export function App(): React.ReactElement {
       cancelled = true;
     };
   }, []);
-
-  const currentNav =
-    NAV_ITEMS.find((item) => item.id === activeTab) ?? NAV_ITEMS[0]!;
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
@@ -150,14 +148,7 @@ export function App(): React.ReactElement {
           ) : activeTab === 'inbox' ? (
             <UncategorizedInbox />
           ) : (
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                {currentNav.heading}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                {currentNav.subtitle}
-              </p>
-            </div>
+            <MonthlyDashboard />
           )}
         </section>
       </main>

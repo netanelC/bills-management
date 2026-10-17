@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import {
   assignStatementFingerprints,
   buildResolvedTransactionItem,
+  computeMonthlyAnalytics,
+  matchesAnalyticsFilter,
   parseStatementBuffer,
   parseStatementText,
   resolveMerchantByAliases,
@@ -15,6 +17,8 @@ import type {
   CardProvider,
   CoverageCellDto,
   CoverageMatrixResponseDto,
+  MonthlyAnalyticsResponseDto,
+  SpendingNature,
   StatementCommitRequestInput,
   StatementCommitResponseDto,
   StatementPreviewFileItemDto,
@@ -365,46 +369,107 @@ export class StatementsService {
 
     const allCategories = this.repository.listAllCategories();
     const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
+    const categoryById = new Map(allCategories.map((c) => [c.id, c]));
 
     return {
+      allCardholders,
+      allCategories,
       cardholderMap,
       cardMap,
       merchantMap,
       categoryNameById,
+      categoryById,
     };
   }
 
   listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
-    const { cardholderMap, cardMap, merchantMap, categoryNameById } =
-      this.loadTransactionLookupMaps();
+    const {
+      cardholderMap,
+      cardMap,
+      merchantMap,
+      categoryNameById,
+      categoryById,
+    } = this.loadTransactionLookupMaps();
 
     const txRows = this.repository.listTransactionsRaw({
       billingMonth: filter.billingMonth,
       cardId: filter.cardId,
     });
 
+    const normalizedSearch = filter.search?.trim().toLowerCase() ?? '';
     const items: TransactionListItemDto[] = [];
 
     for (const tx of txRows) {
-      const card = cardMap.get(tx.cardId);
-      if (!card) continue;
-
-      if (filter.cardholderId && card.cardholderId !== filter.cardholderId) {
+      if (filter.includeExcluded === false && tx.isExcluded) {
+        continue;
+      }
+      if (filter.merchantId && tx.merchantId !== filter.merchantId) {
         continue;
       }
 
-      items.push(
-        buildResolvedTransactionItem({
-          tx,
-          card,
-          cardholderName: cardholderMap.get(card.cardholderId) ?? '',
-          merchant: merchantMap.get(tx.merchantId),
-          categoryNameById,
-        }),
-      );
+      const card = cardMap.get(tx.cardId);
+      if (!card) continue;
+
+      const resolved = buildResolvedTransactionItem({
+        tx,
+        card,
+        cardholderName: cardholderMap.get(card.cardholderId) ?? '',
+        merchant: merchantMap.get(tx.merchantId),
+        categoryNameById,
+      });
+
+      if (
+        !matchesAnalyticsFilter(resolved, categoryById, {
+          cardholderId: filter.cardholderId,
+          cardId: filter.cardId,
+          categoryId: filter.categoryId,
+          spendingNature: filter.spendingNature,
+        })
+      ) {
+        continue;
+      }
+
+      if (normalizedSearch.length > 0) {
+        const haystacks = [
+          resolved.rawMerchantName.toLowerCase(),
+          resolved.merchantName.toLowerCase(),
+          (resolved.notes ?? '').toLowerCase(),
+        ];
+        if (!haystacks.some((h) => h.includes(normalizedSearch))) {
+          continue;
+        }
+      }
+
+      items.push(resolved);
     }
 
     return items;
+  }
+
+  getMonthlyAnalytics(params: {
+    billingMonth?: BillingMonth;
+    cardholderId?: string;
+    cardId?: string;
+    spendingNature?: SpendingNature;
+    categoryId?: string;
+  }): MonthlyAnalyticsResponseDto {
+    const { allCardholders, allCategories } = this.loadTransactionLookupMaps();
+    const allStatements = this.repository.listAllStatements();
+    const allResolvedTransactions = this.listTransactions({});
+
+    return computeMonthlyAnalytics({
+      selectedBillingMonth: params.billingMonth ?? null,
+      statementBillingMonths: allStatements.map((s) => s.billingMonth),
+      transactions: allResolvedTransactions,
+      categories: allCategories,
+      cardholders: allCardholders,
+      filter: {
+        cardholderId: params.cardholderId,
+        cardId: params.cardId,
+        spendingNature: params.spendingNature,
+        categoryId: params.categoryId,
+      },
+    });
   }
 
   updateTransaction(

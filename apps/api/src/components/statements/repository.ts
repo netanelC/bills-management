@@ -23,12 +23,18 @@ import type {
   CardholderDto,
   CategoryDto,
   MerchantAliasDto,
+  SpendingNature,
 } from '@bills/shared';
 
 export interface ListTransactionsFilter {
   billingMonth?: BillingMonth;
   cardholderId?: string;
   cardId?: string;
+  categoryId?: string;
+  spendingNature?: SpendingNature;
+  merchantId?: string;
+  search?: string;
+  includeExcluded?: boolean;
 }
 
 export class StatementsRepository {
