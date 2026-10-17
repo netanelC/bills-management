@@ -472,6 +472,80 @@ export type CategoryAnalyticsItemDto = z.infer<
   typeof CategoryAnalyticsItemSchema
 >;
 
+export const MonthlyTrendCategorySegmentSchema = z.object({
+  categoryId: z.string().nullable(),
+  categoryName: z.string(),
+  color: z.string(),
+  totalIls: z.number(),
+});
+export type MonthlyTrendCategorySegmentDto = z.infer<
+  typeof MonthlyTrendCategorySegmentSchema
+>;
+
+export const MonthlyTrendNatureSegmentSchema = z.object({
+  spendingNature: SpendingNatureSchema,
+  totalIls: z.number(),
+});
+export type MonthlyTrendNatureSegmentDto = z.infer<
+  typeof MonthlyTrendNatureSegmentSchema
+>;
+
+export const MultiMonthTrendPointSchema = z.object({
+  billingMonth: BillingMonthSchema,
+  totalNetSpendIls: z.number(),
+  bySpendingNature: z.array(MonthlyTrendNatureSegmentSchema),
+  byCategory: z.array(MonthlyTrendCategorySegmentSchema),
+});
+export type MultiMonthTrendPointDto = z.infer<
+  typeof MultiMonthTrendPointSchema
+>;
+
+export const TopMerchantItemSchema = z.object({
+  merchantId: z.string(),
+  merchantName: z.string(),
+  totalIls: z.number(),
+  transactionCount: z.number().int().positive(),
+  averageTransactionIls: z.number(),
+});
+export type TopMerchantItemDto = z.infer<typeof TopMerchantItemSchema>;
+
+export const ActiveInstallmentDealSchema = z.object({
+  transactionId: z.string(),
+  merchantId: z.string(),
+  merchantName: z.string(),
+  rawMerchantName: z.string(),
+  cardId: z.string(),
+  cardNickname: z.string(),
+  cardholderName: z.string(),
+  sourceBillingMonth: BillingMonthSchema,
+  purchaseDate: z.string(),
+  monthlyAmountIls: z.number(),
+  installmentCurrent: z.number().int().positive(),
+  installmentTotal: z.number().int().positive(),
+  remainingInstallmentsCount: z.number().int().positive(),
+  remainingTotalAmountIls: z.number(),
+});
+export type ActiveInstallmentDealDto = z.infer<
+  typeof ActiveInstallmentDealSchema
+>;
+
+export const UpcomingInstallmentMonthPointSchema = z.object({
+  billingMonth: BillingMonthSchema,
+  totalProjectedIls: z.number(),
+  dealsCount: z.number().int().positive(),
+});
+export type UpcomingInstallmentMonthPointDto = z.infer<
+  typeof UpcomingInstallmentMonthPointSchema
+>;
+
+export const FutureInstallmentsForecastSchema = z.object({
+  activeInstallmentDeals: z.array(ActiveInstallmentDealSchema),
+  upcomingMonths: z.array(UpcomingInstallmentMonthPointSchema),
+});
+export type FutureInstallmentsForecastDto = z.infer<
+  typeof FutureInstallmentsForecastSchema
+>;
+
 export const MonthlyAnalyticsResponseSchema = z.object({
   selectedBillingMonth: BillingMonthSchema.nullable(),
   availableBillingMonths: z.array(BillingMonthSchema),
@@ -484,6 +558,10 @@ export const MonthlyAnalyticsResponseSchema = z.object({
   spendingNatureBreakdown: z.array(SpendingNatureBreakdownItemSchema),
   cardholderBreakdown: z.array(CardholderBreakdownItemSchema),
   categoryBreakdown: z.array(CategoryAnalyticsItemSchema),
+  multiMonthTrends: z.array(MultiMonthTrendPointSchema),
+  topMerchants: z.array(TopMerchantItemSchema),
+  topMerchantsMultiMonth: z.array(TopMerchantItemSchema),
+  futureInstallmentsForecast: FutureInstallmentsForecastSchema,
 });
 export type MonthlyAnalyticsResponseDto = z.infer<
   typeof MonthlyAnalyticsResponseSchema

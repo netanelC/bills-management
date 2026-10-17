@@ -129,6 +129,116 @@ function buildDashboardScenario() {
         isOverBudget: true,
       },
     ],
+    multiMonthTrends: [
+      {
+        billingMonth: prevMonth,
+        totalNetSpendIls: trailingAvg,
+        bySpendingNature: [
+          { spendingNature: 'FIXED', totalIls: 0 },
+          { spendingNature: 'VARIABLE', totalIls: trailingAvg },
+          { spendingNature: 'DISCRETIONARY', totalIls: 0 },
+        ],
+        byCategory: [
+          {
+            categoryId: groceriesCategory.id,
+            categoryName: groceriesCategory.name,
+            color: groceriesCategory.color,
+            totalIls: trailingAvg,
+          },
+        ],
+      },
+      {
+        billingMonth: activeMonth,
+        totalNetSpendIls: groceriesSpend,
+        bySpendingNature: [
+          { spendingNature: 'FIXED', totalIls: 0 },
+          { spendingNature: 'VARIABLE', totalIls: groceriesSpend },
+          { spendingNature: 'DISCRETIONARY', totalIls: 0 },
+        ],
+        byCategory: [
+          {
+            categoryId: groceriesCategory.id,
+            categoryName: groceriesCategory.name,
+            color: groceriesCategory.color,
+            totalIls: groceriesSpend,
+          },
+        ],
+      },
+    ],
+    topMerchants: [],
+    topMerchantsMultiMonth: [],
+    futureInstallmentsForecast: {
+      activeInstallmentDeals: [],
+      upcomingMonths: [],
+    },
+  };
+
+  const topMerchantId = `merchant-${faker.string.uuid()}`;
+  const topMerchantName = `רשת-${faker.company.name()}`;
+  const installmentMerchantName = `מחשבים-${faker.company.name()}`;
+  const installmentCurrent = faker.number.int({ min: 1, max: 3 });
+  const remainingInstallmentsCount = faker.number.int({ min: 2, max: 4 });
+  const installmentTotal = installmentCurrent + remainingInstallmentsCount;
+  const installmentMonthlyIls = faker.number.float({
+    min: 250,
+    max: 650,
+    fractionDigits: 2,
+  });
+  const remainingTotalAmountIls = Number(
+    (installmentMonthlyIls * remainingInstallmentsCount).toFixed(2),
+  );
+
+  analytics.topMerchants = [
+    {
+      merchantId: topMerchantId,
+      merchantName: topMerchantName,
+      totalIls: groceriesSpend,
+      transactionCount: 2,
+      averageTransactionIls: Number((groceriesSpend / 2).toFixed(2)),
+    },
+  ];
+  analytics.topMerchantsMultiMonth = [
+    {
+      merchantId: topMerchantId,
+      merchantName: topMerchantName,
+      totalIls: Number((groceriesSpend + trailingAvg).toFixed(2)),
+      transactionCount: 3,
+      averageTransactionIls: Number(
+        ((groceriesSpend + trailingAvg) / 3).toFixed(2),
+      ),
+    },
+  ];
+  analytics.futureInstallmentsForecast = {
+    activeInstallmentDeals: [
+      {
+        transactionId: faker.string.uuid(),
+        merchantId: topMerchantId,
+        merchantName: installmentMerchantName,
+        rawMerchantName: `${installmentMerchantName} בע"מ`,
+        cardId: card.id,
+        cardNickname: card.nickname,
+        cardholderName: primaryHolder.name,
+        sourceBillingMonth: activeMonth,
+        purchaseDate: `${activeMonth}-${String(faker.number.int({ min: 10, max: 28 })).padStart(2, '0')}`,
+        monthlyAmountIls: installmentMonthlyIls,
+        installmentCurrent,
+        installmentTotal,
+        remainingInstallmentsCount,
+        remainingTotalAmountIls,
+      },
+    ],
+    upcomingMonths: [
+      {
+        billingMonth: `${year}-05`,
+        totalProjectedIls: installmentMonthlyIls,
+        dealsCount: 1,
+      },
+      {
+        billingMonth: `${year}-06`,
+        totalProjectedIls: installmentMonthlyIls,
+        dealsCount: 1,
+      },
+    ],
   };
 
   const sampleTx: TransactionListItemDto = {
@@ -140,11 +250,11 @@ function buildDashboardScenario() {
     cardProvider: card.provider,
     cardholderId: primaryHolder.id,
     cardholderName: primaryHolder.name,
-    merchantId: faker.string.uuid(),
-    merchantName: `שופרסל ${faker.word.noun()}`,
+    merchantId: topMerchantId,
+    merchantName: topMerchantName,
     billingMonth: activeMonth,
     purchaseDate: `${activeMonth}-${String(faker.number.int({ min: 10, max: 28 })).padStart(2, '0')}`,
-    rawMerchantName: `שופרסל ${faker.word.noun()}`,
+    rawMerchantName: topMerchantName,
     billedAmountIls: groceriesSpend,
     originalAmount: groceriesSpend,
     originalCurrency: 'ILS',
@@ -164,9 +274,39 @@ function buildDashboardScenario() {
     card,
     groceriesCategory,
     groceriesSpend,
+    topMerchantId,
+    installmentMerchantName,
+    installmentCurrent,
+    installmentTotal,
     analytics,
     transactions: [sampleTx],
   };
+}
+
+function mockDashboardFetch(
+  scenario: ReturnType<typeof buildDashboardScenario>,
+  requestedUrls: string[],
+) {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    requestedUrls.push(url);
+    if (url === '/api/cardholders') {
+      return createJsonResponse({ cardholders: [scenario.primaryHolder] });
+    }
+    if (url === '/api/cards') {
+      return createJsonResponse({ cards: [scenario.card] });
+    }
+    if (url === '/api/categories') {
+      return createJsonResponse({ categories: [scenario.groceriesCategory] });
+    }
+    if (url.startsWith('/api/analytics/monthly')) {
+      return createJsonResponse(scenario.analytics);
+    }
+    if (url.startsWith('/api/transactions')) {
+      return createJsonResponse({ transactions: scenario.transactions });
+    }
+    return createJsonResponse({});
+  });
 }
 
 describe('MonthlyDashboard Component', () => {
@@ -178,27 +318,7 @@ describe('MonthlyDashboard Component', () => {
     // Arrange
     const scenario = buildDashboardScenario();
     const requestedUrls: string[] = [];
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = typeof input === 'string' ? input : input.toString();
-      requestedUrls.push(url);
-      if (url === '/api/cardholders') {
-        return createJsonResponse({ cardholders: [scenario.primaryHolder] });
-      }
-      if (url === '/api/cards') {
-        return createJsonResponse({ cards: [scenario.card] });
-      }
-      if (url === '/api/categories') {
-        return createJsonResponse({ categories: [scenario.groceriesCategory] });
-      }
-      if (url.startsWith('/api/analytics/monthly')) {
-        return createJsonResponse(scenario.analytics);
-      }
-      if (url.startsWith('/api/transactions')) {
-        return createJsonResponse({ transactions: scenario.transactions });
-      }
-      return createJsonResponse({});
-    });
+    mockDashboardFetch(scenario, requestedUrls);
 
     render(<MonthlyDashboard />);
     const categoryButton = await screen.findByTestId(
@@ -224,5 +344,40 @@ describe('MonthlyDashboard Component', () => {
         `dashboard-category-row-${scenario.groceriesCategory.id}`,
       ),
     ).toHaveTextContent('חריגה מהיעד');
+  });
+
+  it('When MonthlyDashboard renders Multi-Month Trends, Top Merchants, and Future Installments Forecast and a Top Merchant is clicked, Then it filters the drill-down transactions table by merchantId', async () => {
+    // Arrange
+    const scenario = buildDashboardScenario();
+    const requestedUrls: string[] = [];
+    mockDashboardFetch(scenario, requestedUrls);
+
+    render(<MonthlyDashboard />);
+    const topMerchantButton = await screen.findByTestId(
+      `top-merchant-row-${scenario.topMerchantId}`,
+    );
+
+    // Act
+    fireEvent.click(topMerchantButton);
+
+    // Assert
+    await waitFor(() => {
+      expect(
+        requestedUrls.some((u) =>
+          u.includes(`merchantId=${scenario.topMerchantId}`),
+        ),
+      ).toBe(true);
+    });
+    expect(
+      screen.getByTestId('multi-month-trends-section'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('future-installments-section'),
+    ).toHaveTextContent(scenario.installmentMerchantName);
+    expect(
+      screen.getByTestId('future-installments-section'),
+    ).toHaveTextContent(
+      `תשלום ${scenario.installmentCurrent} מתוך ${scenario.installmentTotal}`,
+    );
   });
 });

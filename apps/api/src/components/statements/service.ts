@@ -460,6 +460,7 @@ export class StatementsService {
     return computeMonthlyAnalytics({
       selectedBillingMonth: params.billingMonth ?? null,
       statementBillingMonths: allStatements.map((s) => s.billingMonth),
+      statements: allStatements,
       transactions: allResolvedTransactions,
       categories: allCategories,
       cardholders: allCardholders,

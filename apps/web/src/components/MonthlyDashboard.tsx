@@ -9,20 +9,19 @@ import {
   type CardholderDto,
   type CategoryDto,
   type MonthlyAnalyticsResponseDto,
-  type SpendingNature,
   type TransactionListItemDto,
   type UpdateTransactionInput,
 } from '@bills/shared';
 import {
+  FutureInstallmentsSection,
+  MultiMonthTrendsSection,
+  SPENDING_NATURE_LABELS,
+  TopMerchantsSection,
+} from './MonthlyLongitudinalWidgets.js';
+import {
   requestTransactionUpdate,
   TransactionInlineControls,
 } from './TransactionInlineControls.js';
-
-const SPENDING_NATURE_LABELS: Record<SpendingNature, string> = {
-  FIXED: 'הוצאות קבועות (FIXED)',
-  VARIABLE: 'הוצאות משתנות (VARIABLE)',
-  DISCRETIONARY: 'פינוקים ופנאי (DISCRETIONARY)',
-};
 
 function buildSliceSearchParams(params: {
   billingMonth?: string;
@@ -30,6 +29,7 @@ function buildSliceSearchParams(params: {
   cardId: string;
   spendingNature: string;
   categoryId: string;
+  merchantId?: string;
   search?: string;
 }): URLSearchParams {
   const query = new URLSearchParams();
@@ -38,6 +38,7 @@ function buildSliceSearchParams(params: {
   if (params.cardId) query.set('cardId', params.cardId);
   if (params.spendingNature) query.set('spendingNature', params.spendingNature);
   if (params.categoryId) query.set('categoryId', params.categoryId);
+  if (params.merchantId) query.set('merchantId', params.merchantId);
   if (params.search?.trim()) query.set('search', params.search.trim());
   return query;
 }
@@ -58,8 +59,12 @@ export function MonthlyDashboard(): React.ReactElement {
   const [selectedSpendingNature, setSelectedSpendingNature] =
     useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [chartViewMode, setChartViewMode] = useState<'bar' | 'donut'>('bar');
+  const [topMerchantsScope, setTopMerchantsScope] = useState<
+    'selected-month' | 'multi-month'
+  >('selected-month');
 
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -118,12 +123,19 @@ export function MonthlyDashboard(): React.ReactElement {
         setAnalytics(parsedAnalytics.data);
       }
 
+      const shouldIncludeMonthInDrilldown = !(
+        selectedMerchantId && topMerchantsScope === 'multi-month'
+      );
+
       const txQuery = buildSliceSearchParams({
-        billingMonth: effectiveMonth,
+        billingMonth: shouldIncludeMonthInDrilldown
+          ? effectiveMonth
+          : undefined,
         cardholderId: selectedCardholderId,
         cardId: selectedCardId,
         spendingNature: selectedSpendingNature,
         categoryId: selectedCategoryId,
+        merchantId: selectedMerchantId,
         search: searchQuery,
       });
 
@@ -152,6 +164,8 @@ export function MonthlyDashboard(): React.ReactElement {
     selectedCardId,
     selectedSpendingNature,
     selectedCategoryId,
+    selectedMerchantId,
+    topMerchantsScope,
     searchQuery,
   ]);
 
@@ -178,6 +192,7 @@ export function MonthlyDashboard(): React.ReactElement {
     setSelectedCardId('');
     setSelectedSpendingNature('');
     setSelectedCategoryId('');
+    setSelectedMerchantId('');
     setSearchQuery('');
   }
 
@@ -186,6 +201,7 @@ export function MonthlyDashboard(): React.ReactElement {
       selectedCardId ||
       selectedSpendingNature ||
       selectedCategoryId ||
+      selectedMerchantId ||
       searchQuery.trim(),
   );
 
@@ -700,6 +716,41 @@ export function MonthlyDashboard(): React.ReactElement {
               })}
             </div>
           </section>
+
+          <MultiMonthTrendsSection
+            multiMonthTrends={analytics.multiMonthTrends}
+            selectedBillingMonth={analytics.selectedBillingMonth}
+            onSelectBillingMonth={(month) => setSelectedBillingMonth(month)}
+            onSelectSpendingNature={(nature) =>
+              setSelectedSpendingNature((prev) =>
+                prev === nature ? '' : nature,
+              )
+            }
+            onSelectCategoryId={(categoryId) =>
+              setSelectedCategoryId((prev) =>
+                prev === categoryId ? '' : categoryId,
+              )
+            }
+          />
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <TopMerchantsSection
+              topMerchants={analytics.topMerchants}
+              topMerchantsMultiMonth={analytics.topMerchantsMultiMonth}
+              topMerchantsScope={topMerchantsScope}
+              selectedMerchantId={selectedMerchantId}
+              onChangeScope={setTopMerchantsScope}
+              onToggleMerchant={(merchantId) =>
+                setSelectedMerchantId((prev) =>
+                  prev === merchantId ? '' : merchantId,
+                )
+              }
+            />
+
+            <FutureInstallmentsSection
+              forecast={analytics.futureInstallmentsForecast}
+            />
+          </div>
         </>
       ) : null}
 
@@ -707,7 +758,9 @@ export function MonthlyDashboard(): React.ReactElement {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-slate-900">
-            פירוט עסקאות לחודש החיוב ({transactions.length})
+            {selectedMerchantId && topMerchantsScope === 'multi-month'
+              ? `פירוט עסקאות בכל החודשים (${transactions.length})`
+              : `פירוט עסקאות לחודש החיוב (${transactions.length})`}
           </h3>
 
           <input

@@ -36,6 +36,8 @@ async function commitStatementBatchHelper(
     amountsByMerchant: ReadonlyArray<{
       rawMerchantName: string;
       billedAmountIls: number;
+      installmentCurrent?: number | null;
+      installmentTotal?: number | null;
     }>;
   }>,
 ) {
@@ -60,9 +62,12 @@ async function commitStatementBatchHelper(
           billedAmountIls: item.billedAmountIls,
           originalAmount: item.billedAmountIls,
           originalCurrency: 'ILS',
-          installmentCurrent: null,
-          installmentTotal: null,
-          installmentTotalAmountIls: null,
+          installmentCurrent: item.installmentCurrent ?? null,
+          installmentTotal: item.installmentTotal ?? null,
+          installmentTotalAmountIls:
+            item.installmentTotal && item.installmentCurrent
+              ? item.billedAmountIls * item.installmentTotal
+              : null,
           occurrenceIndexWithinStatement: idx,
           dedupFingerprint: faker.string.alphanumeric(24),
         })),
@@ -362,5 +367,129 @@ describe('Billing Month Analytics Dashboard & Drill-Down Filters API', () => {
     const searchTx = TransactionsListResponseSchema.parse(searchTxRes.json());
     expect(searchTx.transactions).toHaveLength(1);
     expect(searchTx.transactions[0]?.rawMerchantName).toBe(diningMerchant);
+  });
+
+  it('When statements across consecutive Billing Months include active Installment Info (X < Y), Then GET /api/analytics/monthly computes multiMonthTrends, topMerchants ranking, and projects remaining Y - X future installment months from the latest imported Billing Month per Card', async () => {
+    // Arrange
+    const { app } = await setupTestServer();
+    const cardLastFour = faker.string.numeric(4);
+    const year = faker.number.int({ min: 2024, max: 2026 });
+    const baseMonthNum = faker.number.int({ min: 1, max: 7 });
+    const fmtMonth = (m: number): BillingMonth =>
+      `${year}-${String(m).padStart(2, '0')}`;
+    const earlierMonth = fmtMonth(baseMonthNum);
+    const latestMonth = fmtMonth(baseMonthNum + 1);
+    const projectedMonthOne = fmtMonth(baseMonthNum + 2);
+    const projectedMonthTwo = fmtMonth(baseMonthNum + 3);
+
+    const topMerchantName = `אייבורי ${faker.company.name()}`;
+    const smallerMerchantName = `מאפייה ${faker.company.name()}`;
+
+    const installmentMonthlyIls = faker.number.float({
+      min: 300,
+      max: 600,
+      fractionDigits: 2,
+    });
+    const secondPurchaseTopMerchantIls = faker.number.float({
+      min: 150,
+      max: 300,
+      fractionDigits: 2,
+    });
+    const smallerMerchantIls = faker.number.float({
+      min: 40,
+      max: 110,
+      fractionDigits: 2,
+    });
+    const installmentCurrentInEarlier = faker.number.int({ min: 1, max: 4 });
+    const installmentCurrentInLatest = installmentCurrentInEarlier + 1;
+    const installmentTotal = installmentCurrentInLatest + 2;
+
+    await commitStatementBatchHelper(app, [
+      {
+        cardLastFour,
+        billingMonth: earlierMonth,
+        cardholderId: PRIMARY_CARDHOLDER_ID,
+        amountsByMerchant: [
+          {
+            rawMerchantName: topMerchantName,
+            billedAmountIls: installmentMonthlyIls,
+            installmentCurrent: installmentCurrentInEarlier,
+            installmentTotal,
+          },
+        ],
+      },
+      {
+        cardLastFour,
+        billingMonth: latestMonth,
+        amountsByMerchant: [
+          {
+            rawMerchantName: topMerchantName,
+            billedAmountIls: installmentMonthlyIls,
+            installmentCurrent: installmentCurrentInLatest,
+            installmentTotal,
+          },
+          {
+            rawMerchantName: topMerchantName,
+            billedAmountIls: secondPurchaseTopMerchantIls,
+          },
+          {
+            rawMerchantName: smallerMerchantName,
+            billedAmountIls: smallerMerchantIls,
+          },
+        ],
+      },
+    ]);
+
+    // Act
+    const response = await app.inject({ method: 'GET', url: `/api/analytics/monthly?billingMonth=${latestMonth}` });
+
+    // Assert
+    expect(response.statusCode).toBe(200);
+    const analytics = MonthlyAnalyticsResponseSchema.parse(response.json());
+    expect(analytics.multiMonthTrends.map((t) => t.billingMonth)).toEqual([
+      earlierMonth,
+      latestMonth,
+    ]);
+    expect(analytics.topMerchants).toHaveLength(2);
+    expect(analytics.topMerchants[0]).toMatchObject({
+      merchantName: topMerchantName,
+      transactionCount: 2,
+    });
+    expect(analytics.topMerchants[0]!.totalIls).toBeCloseTo(
+      installmentMonthlyIls + secondPurchaseTopMerchantIls,
+      2,
+    );
+    expect(analytics.topMerchants[0]!.averageTransactionIls).toBeCloseTo(
+      (installmentMonthlyIls + secondPurchaseTopMerchantIls) / 2,
+      2,
+    );
+
+    expect(
+      analytics.futureInstallmentsForecast.activeInstallmentDeals,
+    ).toHaveLength(1);
+    const activeDeal =
+      analytics.futureInstallmentsForecast.activeInstallmentDeals[0]!;
+    expect(activeDeal.installmentCurrent).toBe(installmentCurrentInLatest);
+    expect(activeDeal.installmentTotal).toBe(installmentTotal);
+    expect(activeDeal.remainingInstallmentsCount).toBe(
+      installmentTotal - installmentCurrentInLatest,
+    );
+    expect(activeDeal.remainingTotalAmountIls).toBeCloseTo(
+      installmentMonthlyIls * (installmentTotal - installmentCurrentInLatest),
+      2,
+    );
+
+    expect(analytics.futureInstallmentsForecast.upcomingMonths).toEqual([
+      {
+        billingMonth: projectedMonthOne,
+        totalProjectedIls: Number(installmentMonthlyIls.toFixed(2)),
+        dealsCount: 1,
+      },
+      {
+        billingMonth: projectedMonthTwo,
+        totalProjectedIls: Number(installmentMonthlyIls.toFixed(2)),
+        dealsCount: 1,
+      },
+    ]);
   });
 });
