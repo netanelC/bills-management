@@ -327,3 +327,97 @@ export type TransactionsListResponseDto = z.infer<
   typeof TransactionsListResponseSchema
 >;
 
+export const MerchantAliasSchema = z.object({
+  id: z.string(),
+  merchantId: z.string(),
+  pattern: z.string().min(1),
+  matchType: MerchantAliasMatchTypeSchema,
+});
+export type MerchantAliasDto = z.infer<typeof MerchantAliasSchema>;
+
+export const MerchantSchema = z.object({
+  id: z.string(),
+  canonicalName: z.string().min(1),
+  defaultCategoryId: z.string().nullable(),
+  defaultCategoryName: z.string().nullable(),
+  isAmbiguous: z.boolean(),
+  createdAt: z.string(),
+  aliases: z.array(MerchantAliasSchema),
+  transactionCount: z.number().int().nonnegative(),
+  totalBilledIls: z.number(),
+});
+export type MerchantDto = z.infer<typeof MerchantSchema>;
+
+export const SampleTransactionSchema = z.object({
+  id: z.string(),
+  purchaseDate: z.string(),
+  rawMerchantName: z.string(),
+  billedAmountIls: z.number(),
+  cardNickname: z.string(),
+});
+export type SampleTransactionDto = z.infer<typeof SampleTransactionSchema>;
+
+export const UncategorizedMerchantInboxItemSchema = z.object({
+  merchant: MerchantSchema,
+  transactionCount: z.number().int().nonnegative(),
+  totalBilledIls: z.number(),
+  sampleTransactions: z.array(SampleTransactionSchema),
+});
+export type UncategorizedMerchantInboxItemDto = z.infer<
+  typeof UncategorizedMerchantInboxItemSchema
+>;
+
+export const InboxResponseSchema = z.object({
+  totalInboxCount: z.number().int().nonnegative(),
+  uncategorizedMerchants: z.array(UncategorizedMerchantInboxItemSchema),
+  ambiguousTransactions: z.array(TransactionListItemSchema),
+});
+export type InboxResponseDto = z.infer<typeof InboxResponseSchema>;
+
+export const MerchantsListResponseSchema = z.object({
+  merchants: z.array(MerchantSchema),
+});
+export type MerchantsListResponseDto = z.infer<
+  typeof MerchantsListResponseSchema
+>;
+
+export const AddMerchantAliasInputSchema = z
+  .object({
+    pattern: z.string().trim().min(1, 'Alias pattern cannot be empty'),
+    matchType: MerchantAliasMatchTypeSchema,
+  })
+  .strict();
+export type AddMerchantAliasInput = z.infer<typeof AddMerchantAliasInputSchema>;
+
+export const UpdateMerchantSchema = z
+  .object({
+    canonicalName: z.string().trim().min(1).optional(),
+    defaultCategoryId: z.string().trim().min(1).nullable().optional(),
+    isAmbiguous: z.boolean().optional(),
+    addAlias: AddMerchantAliasInputSchema.optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for merchant update',
+  });
+export type UpdateMerchantInput = z.infer<typeof UpdateMerchantSchema>;
+
+export const MergeMerchantsSchema = z
+  .object({
+    targetMerchantId: z.string().trim().min(1, 'targetMerchantId is required'),
+    sourceMerchantIds: z
+      .array(z.string().trim().min(1))
+      .min(1, 'At least one sourceMerchantId is required'),
+  })
+  .strict();
+export type MergeMerchantsInput = z.infer<typeof MergeMerchantsSchema>;
+
+export const MergeMerchantsResponseSchema = z.object({
+  mergedMerchant: MerchantSchema,
+  reassignedTransactionsCount: z.number().int().nonnegative(),
+});
+export type MergeMerchantsResponseDto = z.infer<
+  typeof MergeMerchantsResponseSchema
+>;
+
+

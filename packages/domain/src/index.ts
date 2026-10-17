@@ -198,4 +198,6 @@ export const DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
 ];
 
 export * from './statement-parser.js';
+export * from './merchant-resolver.js';
+
 

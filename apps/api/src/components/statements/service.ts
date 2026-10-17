@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import {
   assignStatementFingerprints,
-  normalizeMerchantName,
+  buildResolvedTransactionItem,
   parseStatementBuffer,
   parseStatementText,
+  resolveMerchantByAliases,
   roundCurrency,
   type ColumnMappingOverride,
   type ParseStatementOptions,
@@ -100,27 +101,37 @@ export class StatementsService {
     return { files: previewItems };
   }
 
-  private resolveOrCreateMerchantId(
-    rawMerchantName: string,
-    normalizedNameHint?: string,
-  ): string {
-    const canonicalName =
-      normalizedNameHint?.trim() || normalizeMerchantName(rawMerchantName);
+  private resolveOrCreateMerchantId(rawMerchantName: string): string {
+    const cleanedRaw = rawMerchantName.replace(/\s+/g, ' ').trim();
+    const allMerchants = this.repository.listAllMerchants();
+    const allAliases = this.repository.listAllMerchantAliases();
 
-    const existing =
-      this.repository.findMerchantByCanonicalName(canonicalName);
-    if (existing) {
-      return existing.id;
+    const resolution = resolveMerchantByAliases(
+      cleanedRaw,
+      allMerchants,
+      allAliases,
+    );
+
+    if (resolution.matchedMerchantId) {
+      return resolution.matchedMerchantId;
     }
 
     const merchantId = `merchant-${crypto.randomUUID()}`;
     this.repository.insertMerchant({
       id: merchantId,
-      canonicalName,
+      canonicalName: resolution.normalizedCanonicalName,
       defaultCategoryId: null,
       isAmbiguous: false,
       createdAt: new Date().toISOString(),
     });
+
+    this.repository.insertMerchantAlias({
+      id: `alias-${crypto.randomUUID()}`,
+      merchantId,
+      pattern: cleanedRaw,
+      matchType: 'EXACT',
+    });
+
     return merchantId;
   }
 
@@ -230,7 +241,6 @@ export class StatementsService {
         for (const txInput of newTxInputs) {
           const merchantId = this.resolveOrCreateMerchantId(
             txInput.rawMerchantName,
-            txInput.normalizedMerchantName,
           );
 
           this.repository.insertTransaction({
@@ -353,7 +363,7 @@ export class StatementsService {
     const merchantMap = new Map(allMerchants.map((m) => [m.id, m]));
 
     const allCategories = this.repository.listAllCategories();
-    const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
+    const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
 
     const txRows = this.repository.listTransactionsRaw({
       billingMonth: filter.billingMonth,
@@ -370,39 +380,15 @@ export class StatementsService {
         continue;
       }
 
-      const merchant = merchantMap.get(tx.merchantId);
-      const effectiveCategoryId =
-        tx.categoryOverrideId ?? merchant?.defaultCategoryId ?? null;
-      const effectiveCategory = effectiveCategoryId
-        ? categoryMap.get(effectiveCategoryId)
-        : undefined;
-
-      items.push({
-        id: tx.id,
-        statementId: tx.statementId,
-        cardId: tx.cardId,
-        cardLastFourDigits: card.lastFourDigits,
-        cardNickname: card.nickname,
-        cardProvider: card.provider,
-        cardholderId: card.cardholderId,
-        cardholderName: cardholderMap.get(card.cardholderId) ?? '',
-        merchantId: tx.merchantId,
-        merchantName: merchant?.canonicalName ?? tx.rawMerchantName,
-        billingMonth: tx.billingMonth,
-        purchaseDate: tx.purchaseDate,
-        rawMerchantName: tx.rawMerchantName,
-        billedAmountIls: tx.billedAmountIls,
-        originalAmount: tx.originalAmount,
-        originalCurrency: tx.originalCurrency,
-        installmentCurrent: tx.installmentCurrent,
-        installmentTotal: tx.installmentTotal,
-        installmentTotalAmountIls: tx.installmentTotalAmountIls,
-        categoryOverrideId: tx.categoryOverrideId,
-        effectiveCategoryId,
-        effectiveCategoryName: effectiveCategory?.name ?? null,
-        notes: tx.notes,
-        isExcluded: tx.isExcluded,
-      });
+      items.push(
+        buildResolvedTransactionItem({
+          tx,
+          card,
+          cardholderName: cardholderMap.get(card.cardholderId) ?? '',
+          merchant: merchantMap.get(tx.merchantId),
+          categoryNameById,
+        }),
+      );
     }
 
     return items;

@@ -7,60 +7,28 @@ import {
   desc,
   eq,
   inArray,
+  merchantAliases,
   merchants,
   statements,
   transactions,
   type AppDatabase,
+  type MerchantRow,
   type SqliteDatabase,
+  type StatementRow,
+  type TransactionRow,
 } from '@bills/db';
 import type {
   BillingMonth,
   CardDto,
   CardholderDto,
   CategoryDto,
+  MerchantAliasDto,
 } from '@bills/shared';
 
 export interface ListTransactionsFilter {
   billingMonth?: BillingMonth;
   cardholderId?: string;
   cardId?: string;
-}
-
-export interface MerchantRow {
-  id: string;
-  canonicalName: string;
-  defaultCategoryId: string | null;
-  isAmbiguous: boolean;
-  createdAt: string;
-}
-
-export interface StatementRow {
-  id: string;
-  cardId: string;
-  billingMonth: BillingMonth;
-  sourceFilename: string;
-  totalBilledIls: number;
-  importedAt: string;
-}
-
-export interface TransactionRow {
-  id: string;
-  statementId: string;
-  cardId: string;
-  merchantId: string;
-  billingMonth: BillingMonth;
-  purchaseDate: string;
-  rawMerchantName: string;
-  billedAmountIls: number;
-  originalAmount: number;
-  originalCurrency: string;
-  installmentCurrent: number | null;
-  installmentTotal: number | null;
-  installmentTotalAmountIls: number | null;
-  categoryOverrideId: string | null;
-  notes: string | null;
-  isExcluded: boolean;
-  dedupFingerprint: string;
 }
 
 export class StatementsRepository {
@@ -109,17 +77,16 @@ export class StatementsRepository {
     return new Set(rows.map((r) => r.dedupFingerprint));
   }
 
-  findMerchantByCanonicalName(canonicalName: string): MerchantRow | null {
-    const row = this.db
-      .select()
-      .from(merchants)
-      .where(eq(merchants.canonicalName, canonicalName))
-      .get();
-    return row ?? null;
-  }
-
   insertMerchant(merchant: MerchantRow): void {
     this.db.insert(merchants).values(merchant).run();
+  }
+
+  listAllMerchantAliases(): MerchantAliasDto[] {
+    return this.db.select().from(merchantAliases).all();
+  }
+
+  insertMerchantAlias(alias: MerchantAliasDto): void {
+    this.db.insert(merchantAliases).values(alias).run();
   }
 
   findStatementByCardAndMonth(

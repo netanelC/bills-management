@@ -134,3 +134,8 @@ export const transactions = sqliteTable(
     index('idx_transactions_merchant_id').on(table.merchantId),
   ],
 );
+
+export type MerchantRow = typeof merchants.$inferSelect;
+export type StatementRow = typeof statements.$inferSelect;
+export type TransactionRow = typeof transactions.$inferSelect;
+

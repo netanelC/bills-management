@@ -6,6 +6,7 @@ import { registerErrorHandlers } from './errors/app-error.js';
 import { registerHealthRoutes } from './components/health/api.js';
 import { registerHouseholdRoutes } from './components/household/api.js';
 import { registerStatementsRoutes } from './components/statements/api.js';
+import { registerMerchantsRoutes } from './components/merchants/api.js';
 
 export interface BuildServerOptions {
   db: AppDatabase;
@@ -41,6 +42,12 @@ export async function buildServer(
     sqlite: options.sqlite,
   });
 
+  await app.register(registerMerchantsRoutes, {
+    db: options.db,
+    sqlite: options.sqlite,
+  });
+
   return app;
 }
+
 
