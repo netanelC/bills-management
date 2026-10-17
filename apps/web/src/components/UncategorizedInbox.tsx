@@ -7,7 +7,12 @@ import {
   type InboxResponseDto,
   type MerchantAliasMatchType,
   type MerchantDto,
+  type UpdateTransactionInput,
 } from '@bills/shared';
+import {
+  requestTransactionUpdate,
+  TransactionInlineControls,
+} from './TransactionInlineControls.js';
 
 interface AliasDraft {
   pattern: string;
@@ -190,6 +195,20 @@ export function UncategorizedInbox(): React.ReactElement {
     }
   }
 
+  async function handleUpdateTransaction(
+    transactionId: string,
+    payload: UpdateTransactionInput,
+  ): Promise<void> {
+    try {
+      setErrorMessage(null);
+      await requestTransactionUpdate(transactionId, payload);
+      setStatusMessage('פרטי העסקה עודכנו בהצלחה');
+      await loadInboxData();
+    } catch {
+      setErrorMessage('שגיאה בעדכון העסקה');
+    }
+  }
+
   const uncategorizedList = inbox?.uncategorizedMerchants ?? [];
   const ambiguousTransactions = inbox?.ambiguousTransactions ?? [];
   const categorizedOrAmbiguousMerchants = merchants.filter(
@@ -295,29 +314,24 @@ export function UncategorizedInbox(): React.ReactElement {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="text-xs font-medium text-slate-700">
-                        <span className="sr-only">
-                          בחר קטגוריה עבור {merchant.canonicalName}
-                        </span>
-                        <select
-                          aria-label={`בחר קטגוריה עבור ${merchant.canonicalName}`}
-                          value={merchant.defaultCategoryId ?? ''}
-                          onChange={(e) =>
-                            void handleAssignCategory(
-                              merchant.id,
-                              e.target.value,
-                            )
-                          }
-                          className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-indigo-500 focus:outline-none"
-                        >
-                          <option value="">בחר קטגוריה לשיוך...</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <select
+                        aria-label={`בחר קטגוריה עבור ${merchant.canonicalName}`}
+                        value={merchant.defaultCategoryId ?? ''}
+                        onChange={(e) =>
+                          void handleAssignCategory(
+                            merchant.id,
+                            e.target.value,
+                          )
+                        }
+                        className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="">בחר קטגוריה לשיוך...</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
 
                       <button
                         type="button"
@@ -419,25 +433,38 @@ export function UncategorizedInbox(): React.ReactElement {
             עסקאות בבתי עסק דו-משמעיים הממתינות לסיווג פרטני (
             {ambiguousTransactions.length})
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {ambiguousTransactions.map((tx) => (
               <div
                 key={tx.id}
                 data-testid={`inbox-ambiguous-tx-${tx.id}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200/80 bg-white px-3 py-2 text-xs"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200/80 bg-white p-3 text-xs"
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-900">
-                    {tx.rawMerchantName}
-                  </span>
-                  <span className="text-slate-500">({tx.purchaseDate})</span>
-                  {tx.cardNickname ? (
-                    <span className="text-slate-500">• {tx.cardNickname}</span>
-                  ) : null}
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-900">
+                      {tx.rawMerchantName}
+                    </span>
+                    <span className="text-slate-500">({tx.purchaseDate})</span>
+                    <span className="font-bold text-slate-900">
+                      ₪{tx.billedAmountIls.toLocaleString('he-IL')}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    <span>
+                      כרטיס: {tx.cardNickname} ({tx.cardLastFourDigits})
+                    </span>
+                    <span> • </span>
+                    <span>מחזיק כרטיס: {tx.cardholderName}</span>
+                  </div>
                 </div>
-                <span className="font-bold text-slate-900">
-                  ₪{tx.billedAmountIls.toLocaleString('he-IL')}
-                </span>
+
+                <TransactionInlineControls
+                  transaction={tx}
+                  categories={categories}
+                  defaultOptionLabel="בחר קטגוריה לעסקה..."
+                  onUpdate={handleUpdateTransaction}
+                />
               </div>
             ))}
           </div>
@@ -482,7 +509,9 @@ export function UncategorizedInbox(): React.ReactElement {
           </label>
 
           <fieldset className="text-xs font-medium text-slate-700">
-            <legend className="mb-1">בתי עסק מקור למיזוג (ניתן לבחור מספר וריאציות)</legend>
+            <legend className="mb-1">
+              בתי עסק מקור למיזוג (ניתן לבחור מספר וריאציות)
+            </legend>
             <div className="max-h-32 space-y-1.5 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
               {merchants
                 .filter((m) => m.id !== targetMerchantId)
@@ -525,93 +554,68 @@ export function UncategorizedInbox(): React.ReactElement {
             {categorizedOrAmbiguousMerchants.length})
           </h3>
           <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-            {categorizedOrAmbiguousMerchants.map((merchant) => {
-              const draft = aliasDraftByMerchant[merchant.id] ?? {
-                pattern: '',
-                matchType: 'CONTAINS',
-              };
-              return (
-                <div
-                  key={merchant.id}
-                  data-testid={`directory-merchant-${merchant.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 p-3.5 text-xs"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">
-                        {merchant.canonicalName}
+            {categorizedOrAmbiguousMerchants.map((merchant) => (
+              <div
+                key={merchant.id}
+                data-testid={`directory-merchant-${merchant.id}`}
+                className="flex flex-wrap items-center justify-between gap-3 p-3.5 text-xs"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900">
+                      {merchant.canonicalName}
+                    </span>
+                    {merchant.defaultCategoryName ? (
+                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                        {merchant.defaultCategoryName}
                       </span>
-                      {merchant.isAmbiguous ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                          דו-משמעי
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-0.5 text-slate-500">
-                      {merchant.transactionCount} עסקאות • ₪
-                      {merchant.totalBilledIls.toLocaleString('he-IL')}
-                    </p>
+                    ) : null}
+                    {merchant.isAmbiguous ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                        דו-משמעי
+                      </span>
+                    ) : null}
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      aria-label={`בחר קטגוריה עבור ${merchant.canonicalName}`}
-                      value={merchant.defaultCategoryId ?? ''}
-                      onChange={(e) =>
-                        void handleAssignCategory(merchant.id, e.target.value)
-                      }
-                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs"
-                    >
-                      <option value="">ללא קטגוריית ברירת מחדל</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void handleToggleAmbiguous(
-                          merchant.id,
-                          !merchant.isAmbiguous,
-                        )
-                      }
-                      className="rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                    >
-                      {merchant.isAmbiguous
-                        ? 'בטל סימון דו-משמעי'
-                        : 'סמן כדו-משמעי'}
-                    </button>
-
-                    <input
-                      type="text"
-                      placeholder="הוסף תבנית זיהוי..."
-                      aria-label={`תבנית זיהוי עבור ${merchant.canonicalName}`}
-                      value={draft.pattern}
-                      onChange={(e) =>
-                        setAliasDraftByMerchant((prev) => ({
-                          ...prev,
-                          [merchant.id]: {
-                            ...draft,
-                            pattern: e.target.value,
-                          },
-                        }))
-                      }
-                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void handleAddAlias(merchant.id)}
-                      className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-900"
-                    >
-                      הוסף כלל
-                    </button>
-                  </div>
+                  <p className="mt-0.5 text-slate-500">
+                    {merchant.transactionCount} עסקאות • ₪
+                    {merchant.totalBilledIls.toLocaleString('he-IL')}
+                  </p>
                 </div>
-              );
-            })}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label={`שנה קטגוריה עבור ${merchant.canonicalName}`}
+                    value={merchant.defaultCategoryId ?? ''}
+                    onChange={(e) =>
+                      void handleAssignCategory(merchant.id, e.target.value)
+                    }
+                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs"
+                  >
+                    <option value="">ללא קטגוריית ברירת מחדל</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleToggleAmbiguous(
+                        merchant.id,
+                        !merchant.isAmbiguous,
+                      )
+                    }
+                    className="rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                  >
+                    {merchant.isAmbiguous
+                      ? 'בטל סימון דו-משמעי'
+                      : 'סמן כדו-משמעי'}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       ) : null}

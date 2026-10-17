@@ -327,6 +327,18 @@ export type TransactionsListResponseDto = z.infer<
   typeof TransactionsListResponseSchema
 >;
 
+export const UpdateTransactionSchema = z
+  .object({
+    categoryOverrideId: z.string().trim().min(1).nullable().optional(),
+    notes: z.string().trim().nullable().optional(),
+    isExcluded: z.boolean().optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided for transaction update',
+  });
+export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
+
 export const MerchantAliasSchema = z.object({
   id: z.string(),
   merchantId: z.string(),

@@ -20,6 +20,7 @@ import type {
   StatementPreviewFileItemDto,
   StatementPreviewResponseDto,
   TransactionListItemDto,
+  UpdateTransactionInput,
 } from '@bills/shared';
 import { AppError } from '../../errors/app-error.js';
 import type {
@@ -352,7 +353,7 @@ export class StatementsService {
     };
   }
 
-  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
+  private loadTransactionLookupMaps() {
     const allCardholders = this.repository.listAllCardholders();
     const cardholderMap = new Map(allCardholders.map((c) => [c.id, c.name]));
 
@@ -364,6 +365,18 @@ export class StatementsService {
 
     const allCategories = this.repository.listAllCategories();
     const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
+
+    return {
+      cardholderMap,
+      cardMap,
+      merchantMap,
+      categoryNameById,
+    };
+  }
+
+  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
+    const { cardholderMap, cardMap, merchantMap, categoryNameById } =
+      this.loadTransactionLookupMaps();
 
     const txRows = this.repository.listTransactionsRaw({
       billingMonth: filter.billingMonth,
@@ -392,5 +405,73 @@ export class StatementsService {
     }
 
     return items;
+  }
+
+  updateTransaction(
+    id: string,
+    input: UpdateTransactionInput,
+  ): TransactionListItemDto {
+    const existing = this.repository.findTransactionById(id);
+    if (!existing) {
+      throw new AppError({
+        code: 'NOT_FOUND',
+        httpCode: 404,
+        description: `Transaction '${id}' was not found`,
+      });
+    }
+
+    if (
+      input.categoryOverrideId !== undefined &&
+      input.categoryOverrideId !== null &&
+      !this.repository.categoryExists(input.categoryOverrideId)
+    ) {
+      throw new AppError({
+        code: 'VALIDATION_ERROR',
+        httpCode: 400,
+        description: `Category '${input.categoryOverrideId}' does not exist`,
+      });
+    }
+
+    const fieldsToUpdate: Partial<{
+      categoryOverrideId: string | null;
+      notes: string | null;
+      isExcluded: boolean;
+    }> = {};
+
+    if (input.categoryOverrideId !== undefined) {
+      fieldsToUpdate.categoryOverrideId = input.categoryOverrideId;
+    }
+    if (input.notes !== undefined) {
+      const cleanedNotes = input.notes === null ? null : input.notes.trim();
+      fieldsToUpdate.notes =
+        cleanedNotes && cleanedNotes.length > 0 ? cleanedNotes : null;
+    }
+    if (input.isExcluded !== undefined) {
+      fieldsToUpdate.isExcluded = input.isExcluded;
+    }
+
+    if (Object.keys(fieldsToUpdate).length > 0) {
+      this.repository.updateTransactionFields(id, fieldsToUpdate);
+    }
+
+    const updatedTx = this.repository.findTransactionById(id)!;
+    const { cardholderMap, cardMap, merchantMap, categoryNameById } =
+      this.loadTransactionLookupMaps();
+    const card = cardMap.get(updatedTx.cardId);
+    if (!card) {
+      throw new AppError({
+        code: 'NOT_FOUND',
+        httpCode: 404,
+        description: `Card '${updatedTx.cardId}' for Transaction '${id}' was not found`,
+      });
+    }
+
+    return buildResolvedTransactionItem({
+      tx: updatedTx,
+      card,
+      cardholderName: cardholderMap.get(card.cardholderId) ?? '',
+      merchant: merchantMap.get(updatedTx.merchantId),
+      categoryNameById,
+    });
   }
 }

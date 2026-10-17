@@ -181,4 +181,35 @@ export class StatementsRepository {
       .orderBy(desc(transactions.purchaseDate), asc(transactions.id))
       .all();
   }
+
+  findTransactionById(id: string): TransactionRow | null {
+    const row = this.db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .get();
+    return row ?? null;
+  }
+
+  categoryExists(id: string): boolean {
+    const row = this.db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.id, id))
+      .get();
+    return Boolean(row);
+  }
+
+  updateTransactionFields(
+    id: string,
+    fields: Partial<
+      Pick<TransactionRow, 'categoryOverrideId' | 'notes' | 'isExcluded'>
+    >,
+  ): void {
+    this.db
+      .update(transactions)
+      .set(fields)
+      .where(eq(transactions.id, id))
+      .run();
+  }
 }

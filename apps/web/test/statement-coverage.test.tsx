@@ -196,6 +196,9 @@ describe('StatementCoverage Component', () => {
       if (url === '/api/cardholders') {
         return createJsonResponse({ cardholders: scenario.cardholders });
       }
+      if (url === '/api/categories') {
+        return createJsonResponse({ categories: [] });
+      }
       if (url === '/api/coverage') {
         return createJsonResponse(scenario.coverage);
       }
@@ -242,6 +245,9 @@ describe('StatementCoverage Component', () => {
       const method = init?.method ?? 'GET';
       if (url === '/api/cardholders') {
         return createJsonResponse({ cardholders: scenario.cardholders });
+      }
+      if (url === '/api/categories') {
+        return createJsonResponse({ categories: [] });
       }
       if (url === '/api/coverage') {
         return createJsonResponse(scenario.coverage);
@@ -307,6 +313,48 @@ describe('StatementCoverage Component', () => {
           },
         ],
       });
+    });
+  });
+
+  it('When toggling Excluded Transaction on a row in the Transaction table, Then it sends PATCH /api/transactions/:id', async () => {
+    // Arrange
+    const scenario = buildTestScenario();
+    const targetTx = scenario.transactions[0]!;
+    let patchedTxBody: unknown = null;
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      const method = init?.method ?? 'GET';
+      if (url === '/api/cardholders') {
+        return createJsonResponse({ cardholders: scenario.cardholders });
+      }
+      if (url === '/api/categories') {
+        return createJsonResponse({ categories: [] });
+      }
+      if (url === '/api/coverage') {
+        return createJsonResponse(scenario.coverage);
+      }
+      if (url.startsWith('/api/transactions') && method === 'GET') {
+        return createJsonResponse({ transactions: scenario.transactions });
+      }
+      if (url === `/api/transactions/${targetTx.id}` && method === 'PATCH') {
+        patchedTxBody = JSON.parse(String(init?.body));
+        return createJsonResponse({ ...targetTx, isExcluded: true });
+      }
+      return createJsonResponse({});
+    });
+
+    render(<StatementCoverage />);
+    const excludeCheckbox = await screen.findByLabelText(
+      `החרג עסקה ${targetTx.rawMerchantName} (${targetTx.purchaseDate})`,
+    );
+
+    // Act
+    fireEvent.click(excludeCheckbox);
+
+    // Assert
+    await waitFor(() => {
+      expect(patchedTxBody).toEqual({ isExcluded: true });
     });
   });
 });

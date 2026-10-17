@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CardholderSchema,
+  CategorySchema,
   CoverageMatrixResponseSchema,
   StatementCommitResponseSchema,
   StatementPreviewResponseSchema,
@@ -9,11 +10,17 @@ import {
   type CardCoverageRowDto,
   type CardholderDto,
   type CardProvider,
+  type CategoryDto,
   type ColumnMappingOverrideDto,
   type CoverageMatrixResponseDto,
   type StatementPreviewFileItemDto,
   type TransactionListItemDto,
+  type UpdateTransactionInput,
 } from '@bills/shared';
+import {
+  requestTransactionUpdate,
+  TransactionInlineControls,
+} from './TransactionInlineControls.js';
 
 interface UploadedFileBuffer {
   filename: string;
@@ -65,6 +72,7 @@ function buildDefaultCardNickname(
 
 export function StatementCoverage(): React.ReactElement {
   const [cardholders, setCardholders] = useState<CardholderDto[]>([]);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [coverage, setCoverage] = useState<CoverageMatrixResponseDto | null>(
     null,
   );
@@ -106,13 +114,14 @@ export function StatementCoverage(): React.ReactElement {
           ? `/api/transactions?${query.toString()}`
           : '/api/transactions';
 
-        const [chRes, covRes, txRes] = await Promise.all([
+        const [chRes, catRes, covRes, txRes] = await Promise.all([
           fetch('/api/cardholders'),
+          fetch('/api/categories'),
           fetch('/api/coverage'),
           fetch(txUrl),
         ]);
 
-        if (!chRes.ok || !covRes.ok || !txRes.ok) {
+        if (!chRes.ok || !catRes.ok || !covRes.ok || !txRes.ok) {
           throw new Error('Failed to load statement coverage data');
         }
 
@@ -120,10 +129,15 @@ export function StatementCoverage(): React.ReactElement {
         const parsedCardholders = CardholderSchema.array().parse(
           rawCh.cardholders ?? [],
         );
+        const rawCats = (await catRes.json()) as { categories?: unknown };
+        const parsedCategories = CategorySchema.array().parse(
+          rawCats.categories ?? [],
+        );
         const covData = CoverageMatrixResponseSchema.parse(await covRes.json());
         const txData = TransactionsListResponseSchema.parse(await txRes.json());
 
         setCardholders(parsedCardholders);
+        setCategories(parsedCategories);
         setCoverage(covData);
         setTransactions(txData.transactions);
         setErrorMessage(null);
@@ -328,6 +342,20 @@ export function StatementCoverage(): React.ReactElement {
       await loadCoverageAndTransactions(selectedMonth, selectedCardId);
     } catch {
       setErrorMessage('שגיאה בשמירת הדוחות במסד הנתונים');
+    }
+  }
+
+  async function handleUpdateTransaction(
+    transactionId: string,
+    payload: UpdateTransactionInput,
+  ): Promise<void> {
+    try {
+      setErrorMessage(null);
+      await requestTransactionUpdate(transactionId, payload);
+      setStatusMessage('פרטי העסקה עודכנו בהצלחה');
+      await loadCoverageAndTransactions(selectedMonth, selectedCardId);
+    } catch {
+      setErrorMessage('שגיאה בעדכון העסקה');
     }
   }
 
@@ -862,6 +890,9 @@ export function StatementCoverage(): React.ReactElement {
                   כרטיס
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
+                  קטגוריה, הערות והחרגה
+                </th>
+                <th className="px-4 py-2.5 font-semibold text-slate-700">
                   תשלומים / מט&quot;ח
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
@@ -871,16 +902,36 @@ export function StatementCoverage(): React.ReactElement {
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {transactions.map((tx) => (
-                <tr key={tx.id}>
+                <tr
+                  key={tx.id}
+                  className={tx.isExcluded ? 'bg-slate-50/70 opacity-60' : ''}
+                >
                   <td className="px-4 py-2.5 text-slate-600">
                     {tx.purchaseDate}
                   </td>
                   <td className="px-4 py-2.5 font-medium text-slate-900">
-                    {tx.merchantName}
+                    <div>{tx.merchantName}</div>
+                    {tx.rawMerchantName !== tx.merchantName ? (
+                      <div className="text-[11px] text-slate-500">
+                        {tx.rawMerchantName}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2.5 text-xs text-slate-600">
                     {tx.cardNickname} ({tx.cardLastFourDigits}) •{' '}
                     {tx.cardholderName}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs">
+                    <TransactionInlineControls
+                      transaction={tx}
+                      categories={categories}
+                      defaultOptionLabel={
+                        tx.effectiveCategoryName
+                          ? `ברירת מחדל (${tx.effectiveCategoryName})`
+                          : 'ללא דריסת קטגוריה'
+                      }
+                      onUpdate={handleUpdateTransaction}
+                    />
                   </td>
                   <td className="px-4 py-2.5 text-xs text-slate-600">
                     {tx.installmentCurrent && tx.installmentTotal ? (
@@ -908,7 +959,7 @@ export function StatementCoverage(): React.ReactElement {
               {transactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-6 text-center text-xs text-slate-500"
                   >
                     אין עסקאות להצגה עבור הסינון הנוכחי.

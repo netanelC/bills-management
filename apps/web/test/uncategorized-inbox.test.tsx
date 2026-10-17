@@ -110,6 +110,35 @@ function buildInboxScenario() {
     },
   ];
 
+  const sampleBillingMonth = `${faker.number.int({ min: 2024, max: 2027 })}-${String(faker.number.int({ min: 1, max: 12 })).padStart(2, '0')}` as const;
+
+  const ambiguousTx = {
+    id: faker.string.uuid(),
+    statementId: faker.string.uuid(),
+    cardId: faker.string.uuid(),
+    cardLastFourDigits: faker.string.numeric(4),
+    cardNickname: `ישראכרט ${faker.word.noun()}`,
+    cardProvider: 'ISRACARD' as const,
+    cardholderId: faker.string.uuid(),
+    cardholderName: `מחזיק-${faker.person.firstName()}`,
+    merchantId: secondMerchant.id,
+    merchantName: secondMerchant.canonicalName,
+    billingMonth: sampleBillingMonth,
+    purchaseDate: sampleDate,
+    rawMerchantName: `BIT ${faker.word.noun()}`,
+    billedAmountIls: sampleAmountTwo,
+    originalAmount: sampleAmountTwo,
+    originalCurrency: 'ILS',
+    installmentCurrent: null,
+    installmentTotal: null,
+    installmentTotalAmountIls: null,
+    categoryOverrideId: null,
+    effectiveCategoryId: null,
+    effectiveCategoryName: null,
+    notes: null,
+    isExcluded: false,
+  };
+
   const inbox: InboxResponseDto = {
     totalInboxCount: uncategorizedMerchants.length,
     uncategorizedMerchants,
@@ -119,8 +148,10 @@ function buildInboxScenario() {
   return {
     categories: [groceriesCategory, diningCategory],
     groceriesCategory,
+    diningCategory,
     firstMerchant,
     secondMerchant,
+    ambiguousTx,
     sampleDate,
     sampleAmountOne,
     inbox,
@@ -242,5 +273,63 @@ describe('UncategorizedInbox Component', () => {
         sourceMerchantIds: [scenario.secondMerchant.id],
       });
     });
+  });
+
+  it('When an Ambiguous Merchant Transaction is displayed in the Uncategorized Inbox, Then selecting a Category Override sends PATCH /api/transactions/:id', async () => {
+    // Arrange
+    const scenario = buildInboxScenario();
+    const inboxWithAmbiguous: InboxResponseDto = {
+      ...scenario.inbox,
+      totalInboxCount: scenario.inbox.uncategorizedMerchants.length + 1,
+      ambiguousTransactions: [scenario.ambiguousTx],
+    };
+    let patchedTransactionPayload: unknown = null;
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      const method = init?.method ?? 'GET';
+      if (url === '/api/categories' && method === 'GET') {
+        return createJsonResponse({ categories: scenario.categories });
+      }
+      if (url === '/api/inbox' && method === 'GET') {
+        return createJsonResponse(inboxWithAmbiguous);
+      }
+      if (url === '/api/merchants' && method === 'GET') {
+        return createJsonResponse({
+          merchants: [scenario.firstMerchant, scenario.secondMerchant],
+        });
+      }
+      if (
+        url === `/api/transactions/${scenario.ambiguousTx.id}` &&
+        method === 'PATCH'
+      ) {
+        patchedTransactionPayload = JSON.parse(String(init?.body));
+        return createJsonResponse({
+          ...scenario.ambiguousTx,
+          categoryOverrideId: scenario.diningCategory.id,
+          effectiveCategoryId: scenario.diningCategory.id,
+          effectiveCategoryName: scenario.diningCategory.name,
+        });
+      }
+      return createJsonResponse({});
+    });
+
+    render(<UncategorizedInbox />);
+    const overrideSelect = await screen.findByLabelText(
+      `סיווג עסקה ${scenario.ambiguousTx.rawMerchantName} (${scenario.ambiguousTx.purchaseDate})`,
+    );
+
+    // Act
+    fireEvent.change(overrideSelect, { target: { value: scenario.diningCategory.id } });
+
+    // Assert
+    await waitFor(() => {
+      expect(patchedTransactionPayload).toEqual({
+        categoryOverrideId: scenario.diningCategory.id,
+      });
+    });
+    expect(
+      screen.getByTestId(`inbox-ambiguous-tx-${scenario.ambiguousTx.id}`),
+    ).toHaveTextContent(scenario.ambiguousTx.cardholderName);
   });
 });

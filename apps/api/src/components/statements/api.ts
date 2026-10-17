@@ -5,6 +5,7 @@ import {
   BillingMonthSchema,
   StatementCommitRequestSchema,
   StatementPreviewJsonRequestSchema,
+  UpdateTransactionSchema,
 } from '@bills/shared';
 import type { AppDatabase, SqliteDatabase } from '@bills/db';
 import { AppError } from '../../errors/app-error.js';
@@ -15,6 +16,10 @@ const TransactionsQuerySchema = z.object({
   billingMonth: BillingMonthSchema.optional(),
   cardholderId: z.string().trim().min(1).optional(),
   cardId: z.string().trim().min(1).optional(),
+});
+
+const TransactionIdParamsSchema = z.object({
+  id: z.string().trim().min(1),
 });
 
 export interface StatementsRoutesOptions {
@@ -94,5 +99,12 @@ export async function registerStatementsRoutes(
     const query = TransactionsQuerySchema.parse(request.query);
     const transactions = service.listTransactions(query);
     return reply.status(200).send({ transactions });
+  });
+
+  app.patch('/api/transactions/:id', async (request, reply) => {
+    const params = TransactionIdParamsSchema.parse(request.params);
+    const input = UpdateTransactionSchema.parse(request.body);
+    const updated = service.updateTransaction(params.id, input);
+    return reply.status(200).send(updated);
   });
 }
