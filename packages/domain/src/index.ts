@@ -196,3 +196,6 @@ export const DEFAULT_CATEGORIES: readonly DefaultCategorySeed[] = [
     sortOrder: 14,
   },
 ];
+
+export * from './statement-parser.js';
+

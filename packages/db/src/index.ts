@@ -183,4 +183,5 @@ export function createDatabase(
 
 export * from './schema.js';
 export { seedDefaultHouseholdData } from './seed.js';
-export { asc, eq } from 'drizzle-orm';
+export { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+

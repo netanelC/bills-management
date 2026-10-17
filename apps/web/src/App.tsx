@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { HealthResponseSchema, type HealthResponse } from '@bills/shared';
 import { HouseholdSettings } from './components/HouseholdSettings.js';
+import { StatementCoverage } from './components/StatementCoverage.js';
 
 type WorkflowTab = 'dashboard' | 'inbox' | 'coverage' | 'settings';
 
@@ -143,6 +144,8 @@ export function App(): React.ReactElement {
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
           {activeTab === 'settings' ? (
             <HouseholdSettings />
+          ) : activeTab === 'coverage' ? (
+            <StatementCoverage />
           ) : (
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
@@ -158,3 +161,4 @@ export function App(): React.ReactElement {
     </div>
   );
 }
+
