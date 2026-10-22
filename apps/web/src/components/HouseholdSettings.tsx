@@ -199,17 +199,6 @@ export function HouseholdSettings(): React.ReactElement {
     }
   }
 
-  async function handleDeleteCategory(id: string): Promise<void> {
-    try {
-      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete category failed');
-      setCategories((prev) => prev.filter((cat) => cat.id !== id));
-      setErrorMessage(null);
-    } catch {
-      setErrorMessage('שגיאה במחיקת הקטגוריה');
-    }
-  }
-
   if (loading) {
     return (
       <div className="py-8 text-center text-sm text-slate-500">
@@ -260,7 +249,6 @@ export function HouseholdSettings(): React.ReactElement {
         categories={categories}
         onCreateCategory={handleCreateCategory}
         onUpdateCategory={handleUpdateCategory}
-        onDeleteCategory={handleDeleteCategory}
       />
     </div>
   );

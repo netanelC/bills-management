@@ -51,14 +51,12 @@ export interface CategorySettingsSectionProps {
       sortOrder?: number;
     },
   ) => Promise<void>;
-  onDeleteCategory: (id: string) => Promise<void>;
 }
 
 export function CategorySettingsSection({
   categories,
   onCreateCategory,
   onUpdateCategory,
-  onDeleteCategory,
 }: CategorySettingsSectionProps): React.ReactElement {
   const [newCategoryForm, setNewCategoryForm] = useState<CategoryFormState>(
     INITIAL_CATEGORY_FORM,
@@ -143,9 +141,11 @@ export function CategorySettingsSection({
           }
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
         >
-          <option value="FIXED">הוצאות קבועות (Fixed)</option>
-          <option value="VARIABLE">הוצאות מחיה משתנות (Variable)</option>
-          <option value="DISCRETIONARY">פינוקים ופנאי (Discretionary)</option>
+          {SPENDING_NATURES.map((nature) => (
+            <option key={nature} value={nature}>
+              {SPENDING_NATURE_META[nature].title}
+            </option>
+          ))}
         </select>
         <input
           type="color"
@@ -242,11 +242,11 @@ export function CategorySettingsSection({
                             }
                             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
                           >
-                            <option value="FIXED">הוצאות קבועות</option>
-                            <option value="VARIABLE">הוצאות משתנות</option>
-                            <option value="DISCRETIONARY">
-                              פינוקים ופנאי
-                            </option>
+                            {SPENDING_NATURES.map((natureOption) => (
+                              <option key={natureOption} value={natureOption}>
+                                {SPENDING_NATURE_META[natureOption].title}
+                              </option>
+                            ))}
                           </select>
                           <input
                             type="color"
@@ -327,14 +327,6 @@ export function CategorySettingsSection({
                               className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                             >
                               ערוך
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={`מחק קטגוריה ${cat.name}`}
-                              onClick={() => void onDeleteCategory(cat.id)}
-                              className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50"
-                            >
-                              מחק
                             </button>
                           </div>
                         </>

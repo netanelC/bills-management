@@ -110,10 +110,6 @@ function setupDefaultFetchMocks(createdCardId: string): void {
       );
     }
 
-    if (url.startsWith('/api/categories/') && method === 'DELETE') {
-      return createJsonResponse({ success: true }, 200);
-    }
-
     return createJsonResponse({}, 200);
   });
 }
@@ -202,24 +198,5 @@ describe('HouseholdSettings Component', () => {
       expect(screen.getByText(categoryName)).toBeInTheDocument();
     });
     expect(screen.getByText('יעד חודשי: ₪1,500')).toBeInTheDocument();
-  });
-
-  it('deletes a Category when delete button is clicked', async () => {
-    // Arrange
-    setupDefaultFetchMocks(faker.string.uuid());
-    render(<HouseholdSettings />);
-    await waitFor(() => {
-      expect(screen.getByText('חשבונות ודיור')).toBeInTheDocument();
-    });
-
-    // Act
-    fireEvent.click(
-      screen.getByRole('button', { name: 'מחק קטגוריה חשבונות ודיור' }),
-    );
-
-    // Assert
-    await waitFor(() => {
-      expect(screen.queryByText('חשבונות ודיור')).not.toBeInTheDocument();
-    });
   });
 });
