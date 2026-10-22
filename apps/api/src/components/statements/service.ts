@@ -227,7 +227,7 @@ export class StatementsService {
       this.repository.updateStatementTotal(statement.id, updatedTotal);
       return {
         statement: { ...statement, totalBilledIls: updatedTotal },
-        isNewStatement: true,
+        isNewStatement: false,
       };
     }
 
@@ -410,35 +410,13 @@ export class StatementsService {
     };
   }
 
-  private loadTransactionLookupMaps() {
-    const allCardholders = this.repository.listAllCardholders();
-    const allCategories = this.repository.listAllCategories();
+  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
     const lookups = buildEntityLookupMaps({
-      cardholders: allCardholders,
+      cardholders: this.repository.listAllCardholders(),
       cards: this.repository.listAllCards(),
-      categories: allCategories,
+      categories: this.repository.listAllCategories(),
       merchants: this.repository.listAllMerchants(),
     });
-
-    return {
-      allCardholders,
-      allCategories,
-      cardholderMap: lookups.cardholderNameMap,
-      cardMap: lookups.cardMap,
-      merchantMap: lookups.merchantMap,
-      categoryNameById: lookups.categoryNameById,
-      categoryById: lookups.categoryById,
-    };
-  }
-
-  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
-    const {
-      cardholderMap,
-      cardMap,
-      merchantMap,
-      categoryNameById,
-      categoryById,
-    } = this.loadTransactionLookupMaps();
 
     const txRows = this.repository.listTransactionsRaw({
       billingMonth: filter.billingMonth,
@@ -456,19 +434,19 @@ export class StatementsService {
         continue;
       }
 
-      const card = cardMap.get(tx.cardId);
+      const card = lookups.cardMap.get(tx.cardId);
       if (!card) continue;
 
       const resolved = buildResolvedTransactionItem({
         tx,
         card,
-        cardholderName: cardholderMap.get(card.cardholderId) ?? '',
-        merchant: merchantMap.get(tx.merchantId),
-        categoryNameById,
+        cardholderName: lookups.cardholderNameMap.get(card.cardholderId) ?? '',
+        merchant: lookups.merchantMap.get(tx.merchantId),
+        categoryNameById: lookups.categoryNameById,
       });
 
       if (
-        !matchesAnalyticsFilter(resolved, categoryById, {
+        !matchesAnalyticsFilter(resolved, lookups.categoryById, {
           cardholderId: filter.cardholderId,
           cardId: filter.cardId,
           categoryId: filter.categoryId,
@@ -502,7 +480,8 @@ export class StatementsService {
     spendingNature?: SpendingNature;
     categoryId?: string;
   }): MonthlyAnalyticsResponseDto {
-    const { allCardholders, allCategories } = this.loadTransactionLookupMaps();
+    const allCardholders = this.repository.listAllCardholders();
+    const allCategories = this.repository.listAllCategories();
     const allStatements = this.repository.listAllStatements();
     const allResolvedTransactions = this.listTransactions({});
 
@@ -570,9 +549,13 @@ export class StatementsService {
     }
 
     const updatedTx = this.repository.findTransactionById(id)!;
-    const { cardholderMap, cardMap, merchantMap, categoryNameById } =
-      this.loadTransactionLookupMaps();
-    const card = cardMap.get(updatedTx.cardId);
+    const lookups = buildEntityLookupMaps({
+      cardholders: this.repository.listAllCardholders(),
+      cards: this.repository.listAllCards(),
+      categories: this.repository.listAllCategories(),
+      merchants: this.repository.listAllMerchants(),
+    });
+    const card = lookups.cardMap.get(updatedTx.cardId);
     if (!card) {
       throw new AppError({
         code: 'NOT_FOUND',
@@ -584,9 +567,9 @@ export class StatementsService {
     return buildResolvedTransactionItem({
       tx: updatedTx,
       card,
-      cardholderName: cardholderMap.get(card.cardholderId) ?? '',
-      merchant: merchantMap.get(updatedTx.merchantId),
-      categoryNameById,
+      cardholderName: lookups.cardholderNameMap.get(card.cardholderId) ?? '',
+      merchant: lookups.merchantMap.get(updatedTx.merchantId),
+      categoryNameById: lookups.categoryNameById,
     });
   }
 }

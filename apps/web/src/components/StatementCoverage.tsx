@@ -132,7 +132,7 @@ export function StatementCoverage(): React.ReactElement {
         setTransactions(txData.transactions);
         setErrorMessage(null);
       } catch {
-        setErrorMessage('שגיאה בטעינת נתוני כיסוי דוחות ועסקאות');
+        setErrorMessage('שגיאה בטעינת נתוני כיסוי דפי פירוט ועסקאות');
       } finally {
         setLoading(false);
       }
@@ -192,7 +192,7 @@ export function StatementCoverage(): React.ReactElement {
       }
       setOnboardingByLastFour(nextOnboarding);
     } catch {
-      setErrorMessage('שגיאה בפענוח קבצי הדוחות לתצוגה מקדימה');
+      setErrorMessage('שגיאה בפענוח קובצי דפי הפירוט לתצוגה מקדימה');
     }
   }
 
@@ -313,7 +313,7 @@ export function StatementCoverage(): React.ReactElement {
       setRawFiles([]);
       await loadCoverageAndTransactions(selectedMonth, selectedCardId);
     } catch {
-      setErrorMessage('שגיאה בשמירת הדוחות במסד הנתונים');
+      setErrorMessage('שגיאה בשמירת דפי הפירוט במסד הנתונים');
     }
   }
 
@@ -334,7 +334,7 @@ export function StatementCoverage(): React.ReactElement {
   if (loading && !coverage) {
     return (
       <div className="py-6 text-sm text-slate-500">
-        טוען מטריצת כיסוי דוחות ועסקאות...
+        טוען מטריצת כיסוי דפי פירוט ועסקאות...
       </div>
     );
   }
@@ -343,11 +343,11 @@ export function StatementCoverage(): React.ReactElement {
     <div className="space-y-8">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
-          מטריצת כיסוי דוחות וייבוא קבצים (Statement Coverage)
+          מטריצת כיסוי דפי פירוט וייבוא קבצים (Statement Coverage)
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          העלאה מרוכזת של דוחות ישראכרט ואמריקן אקספרס (.xls, .xlsx, .csv),
-          שיוך כרטיסים חדשים ומעקב אחר שלמות הדוחות החודשיים
+          העלאה מרוכזת של דפי פירוט ישראכרט ואמריקן אקספרס (.xls, .xlsx, .csv),
+          שיוך כרטיסים חדשים ומעקב אחר שלמות דפי הפירוט החודשיים
         </p>
       </div>
 
@@ -387,7 +387,7 @@ export function StatementCoverage(): React.ReactElement {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
-              העלאת קבצי דוחות (Batch Upload — גרירה או בחירת קבצים)
+              העלאת קובצי דפי פירוט (Batch Upload — גרירה או בחירת קבצים)
             </h3>
             <p className="mt-1 text-xs text-slate-600">
               גרור לכאן או בחר קובץ אחד או יותר של ישראכרט / אמריקן אקספרס.
@@ -396,12 +396,12 @@ export function StatementCoverage(): React.ReactElement {
             </p>
           </div>
           <label className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-xs hover:bg-indigo-700">
-            בחירת קבצי דוחות
+            בחירת קובצי דפי פירוט
             <input
               type="file"
               multiple
               accept=".xls,.xlsx,.csv"
-              aria-label="בחירת קבצי דוחות"
+              aria-label="בחירת קבצי דפי פירוט"
               onChange={(e) => void handleFileSelect(e)}
               className="sr-only"
             />
@@ -536,7 +536,7 @@ export function StatementCoverage(): React.ReactElement {
                                 </div>
                               ) : (
                                 <span className="inline-flex rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-600/20">
-                                  חסר דוח
+                                  חסר דף פירוט
                                 </span>
                               )}
                             </td>
@@ -551,7 +551,8 @@ export function StatementCoverage(): React.ReactElement {
           </div>
         ) : (
           <p className="text-xs text-slate-500">
-            טרם הועלו דוחות או כרטיסים. העלה קובץ דוח ראשון כדי לאכלס את המטריצה.
+            טרם הועלו דפי פירוט או כרטיסים. העלה קובץ דף פירוט ראשון כדי לאכלס
+            את המטריצה.
           </p>
         )}
       </section>

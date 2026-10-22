@@ -29,9 +29,9 @@ const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     id: 'coverage',
-    label: 'כיסוי דוחות',
-    heading: 'מטריצת כיסוי דוחות (Statement Coverage)',
-    subtitle: 'העלאת קבצי ישראכרט/אמקס ומטריצת כרטיסים (Statement Coverage)',
+    label: 'כיסוי דפי פירוט',
+    heading: 'מטריצת כיסוי דפי פירוט (Statement Coverage)',
+    subtitle: 'העלאת קובצי ישראכרט/אמקס ומטריצת כרטיסים (Statement Coverage)',
   },
   {
     id: 'settings',

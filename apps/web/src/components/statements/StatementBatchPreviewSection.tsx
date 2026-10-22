@@ -73,7 +73,7 @@ export function StatementBatchPreviewSection({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-slate-900">
-          תצוגה מקדימה של קובצי הדוחות ({previewFiles.length})
+          תצוגה מקדימה של קובצי דפי פירוט ({previewFiles.length})
         </h4>
         <span className="text-xs text-slate-500">
           בדוק את הנתונים המזוהים ואשר את הקליטה למערכת
@@ -185,6 +185,18 @@ export function StatementBatchPreviewSection({
                   </span>
                   <span className="mr-2 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
                     חודש חיוב: {file.detectedBillingMonth ?? 'לא זוהה'}
+                  </span>
+                  <span className="mr-2 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                    מחזיק כרטיס:{' '}
+                    {(() => {
+                      const chId =
+                        file.existingCard?.cardholderId ??
+                        onboardingByLastFour[lastFour]?.cardholderId;
+                      return (
+                        cardholders.find((ch) => ch.id === chId)?.name ??
+                        'טרם שוייך'
+                      );
+                    })()}
                   </span>
                 </div>
 
@@ -334,7 +346,7 @@ export function StatementBatchPreviewSection({
           onClick={onCommit}
           className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
         >
-          אישור וייבוא דוחות
+          אישור וייבוא דפי פירוט
         </button>
       </div>
     </div>

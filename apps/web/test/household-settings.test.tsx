@@ -93,6 +93,23 @@ function setupDefaultFetchMocks(createdCardId: string): void {
       );
     }
 
+    if (url === '/api/categories' && method === 'POST') {
+      const parsed = JSON.parse(String(init?.body)) as {
+        name: string;
+        spendingNature: string;
+        color: string;
+        budgetTargetIls: number | null;
+      };
+      return createJsonResponse(
+        {
+          id: faker.string.uuid(),
+          ...parsed,
+          sortOrder: 99,
+        },
+        201,
+      );
+    }
+
     return createJsonResponse({}, 200);
   });
 }
@@ -154,5 +171,32 @@ describe('HouseholdSettings Component', () => {
     expect(screen.getByTestId(`card-row-${createdCardId}`)).toHaveTextContent(
       lastFour,
     );
+  });
+
+  it('creates a new Category with budget target 0 when submitted', async () => {
+    // Arrange
+    setupDefaultFetchMocks(faker.string.uuid());
+    render(<HouseholdSettings />);
+    await waitFor(() => {
+      expect(screen.getByLabelText('שם קטגוריה חדשה')).toBeInTheDocument();
+    });
+    const categoryName = 'בדיקת יעד אפס';
+
+    fireEvent.change(screen.getByLabelText('שם קטגוריה חדשה'), {
+      target: { value: categoryName },
+    });
+    fireEvent.change(
+      screen.getByLabelText('יעד תקציב חודשי לקטגוריה חדשה'),
+      { target: { value: '0' } },
+    );
+
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'הוסף קטגוריה' }));
+
+    // Assert
+    await waitFor(() => {
+      expect(screen.getByText(categoryName)).toBeInTheDocument();
+    });
+    expect(screen.getByText('יעד חודשי: ₪0')).toBeInTheDocument();
   });
 });

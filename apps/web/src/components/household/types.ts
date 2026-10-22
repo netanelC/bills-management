@@ -36,7 +36,7 @@ export function parseBudgetInput(rawBudget: string): number | null {
     return null;
   }
   const numericValue = Number(trimmed);
-  if (Number.isNaN(numericValue) || numericValue <= 0) {
+  if (Number.isNaN(numericValue) || numericValue < 0) {
     return null;
   }
   return numericValue;

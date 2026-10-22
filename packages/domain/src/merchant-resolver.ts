@@ -115,29 +115,18 @@ export interface TransactionResolutionMerchantContext {
   isAmbiguous: boolean;
 }
 
-export interface TransactionResolutionContext {
+export interface BuildResolvedTransactionParams {
+  tx: RawTransactionForMapping;
   card: TransactionResolutionCardContext;
   cardholderName: string;
   merchant?: TransactionResolutionMerchantContext | null;
   categoryNameById: ReadonlyMap<string, string>;
 }
 
-export type BuildResolvedTransactionParams =
-  | {
-      tx: RawTransactionForMapping;
-      context: TransactionResolutionContext;
-    }
-  | ({
-      tx: RawTransactionForMapping;
-    } & TransactionResolutionContext);
-
 export function buildResolvedTransactionItem(
   params: BuildResolvedTransactionParams,
 ) {
-  const tx = params.tx;
-  const context: TransactionResolutionContext =
-    'context' in params ? params.context : params;
-  const { card, cardholderName, merchant, categoryNameById } = context;
+  const { tx, card, cardholderName, merchant, categoryNameById } = params;
 
   const effectiveCategoryId = resolveEffectiveCategoryId({
     transactionCategoryOverrideId: tx.categoryOverrideId,

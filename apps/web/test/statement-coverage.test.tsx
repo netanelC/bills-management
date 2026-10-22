@@ -223,7 +223,7 @@ describe('StatementCoverage Component', () => {
       screen.getByTestId(
         `coverage-cell-${scenario.missingCard.id}-${scenario.billingMonth}`,
       ),
-    ).toHaveTextContent('חסר דוח');
+    ).toHaveTextContent('חסר דף פירוט');
     expect(screen.getByTestId('coverage-matrix-table')).toHaveTextContent(
       'מחזיק כרטיס: אני',
     );
@@ -275,9 +275,9 @@ describe('StatementCoverage Component', () => {
     });
     render(<StatementCoverage />);
     await waitFor(() => {
-      expect(screen.getByLabelText('בחירת קבצי דוחות')).toBeInTheDocument();
+      expect(screen.getByLabelText('בחירת קבצי דפי פירוט')).toBeInTheDocument();
     });
-    const fileInput = screen.getByLabelText('בחירת קבצי דוחות');
+    const fileInput = screen.getByLabelText('בחירת קבצי דפי פירוט');
     const mockFile = new File(
       ['<html></html>'],
       `stmt_${scenario.newCardLastFour}.xls`,
@@ -298,7 +298,7 @@ describe('StatementCoverage Component', () => {
 
     // Act
     fireEvent.click(
-      screen.getByRole('button', { name: 'אישור וייבוא דוחות' }),
+      screen.getByRole('button', { name: 'אישור וייבוא דפי פירוט' }),
     );
 
     // Assert

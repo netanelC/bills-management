@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import type { CardDto, CardholderDto, CategoryDto } from '@bills/shared';
+import type {
+  CardDto,
+  CardholderDto,
+  CardProvider,
+  CategoryDto,
+  SpendingNature,
+} from '@bills/shared';
 import { CardholderSettingsSection } from './household/CardholderSettingsSection.js';
 import { CardSettingsSection } from './household/CardSettingsSection.js';
 import { CategorySettingsSection } from './household/CategorySettingsSection.js';
-import {
-  type CardFormState,
-  type CategoryFormState,
-  INITIAL_CARD_FORM,
-  INITIAL_CATEGORY_FORM,
-  parseBudgetInput,
-} from './household/types.js';
 
 function compareCategories(a: CategoryDto, b: CategoryDto): number {
   return a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
@@ -25,20 +24,6 @@ export function HouseholdSettings(): React.ReactElement {
   const [editingCardholderNames, setEditingCardholderNames] = useState<
     Record<string, string>
   >({});
-
-  const [newCardForm, setNewCardForm] =
-    useState<CardFormState>(INITIAL_CARD_FORM);
-  const [editingCardId, setEditingCardId] = useState<string | null>(null);
-  const [editCardForm, setEditCardForm] =
-    useState<CardFormState>(INITIAL_CARD_FORM);
-
-  const [newCategoryForm, setNewCategoryForm] = useState<CategoryFormState>(
-    INITIAL_CATEGORY_FORM,
-  );
-  const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [editCategoryForm, setEditCategoryForm] = useState<CategoryFormState>(
-    INITIAL_CATEGORY_FORM,
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -71,13 +56,6 @@ export function HouseholdSettings(): React.ReactElement {
             initialNames[ch.id] = ch.name;
           }
           setEditingCardholderNames(initialNames);
-          const firstCardholder = chData.cardholders[0];
-          if (firstCardholder) {
-            setNewCardForm((prev) => ({
-              ...prev,
-              cardholderId: firstCardholder.id,
-            }));
-          }
           setLoading(false);
         }
       } catch {
@@ -115,59 +93,45 @@ export function HouseholdSettings(): React.ReactElement {
     }
   }
 
-  async function handleCreateCard(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
+  async function handleCreateCard(input: {
+    nickname: string;
+    lastFourDigits: string;
+    provider: CardProvider;
+    cardholderId: string;
+  }): Promise<void> {
     try {
       const res = await fetch('/api/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cardholderId: newCardForm.cardholderId,
-          lastFourDigits: newCardForm.lastFourDigits.trim(),
-          provider: newCardForm.provider,
-          nickname: newCardForm.nickname.trim(),
-        }),
+        body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error('Create card failed');
       const created = (await res.json()) as CardDto;
       setCards((prev) => [...prev, created]);
-      setNewCardForm((prev) => ({
-        ...prev,
-        nickname: '',
-        lastFourDigits: '',
-      }));
       setErrorMessage(null);
     } catch {
       setErrorMessage('שגיאה בהוספת כרטיס אשראי (ודא 4 ספרות ושם כינוי)');
     }
   }
 
-  function startEditCard(card: CardDto): void {
-    setEditingCardId(card.id);
-    setEditCardForm({
-      nickname: card.nickname,
-      lastFourDigits: card.lastFourDigits,
-      provider: card.provider,
-      cardholderId: card.cardholderId,
-    });
-  }
-
-  async function handleSaveCardEdit(id: string): Promise<void> {
+  async function handleUpdateCard(
+    id: string,
+    input: {
+      nickname: string;
+      lastFourDigits: string;
+      provider: CardProvider;
+      cardholderId: string;
+    },
+  ): Promise<void> {
     try {
       const res = await fetch(`/api/cards/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nickname: editCardForm.nickname.trim(),
-          lastFourDigits: editCardForm.lastFourDigits.trim(),
-          provider: editCardForm.provider,
-          cardholderId: editCardForm.cardholderId,
-        }),
+        body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error('Update card failed');
       const updated = (await res.json()) as CardDto;
       setCards((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      setEditingCardId(null);
       setErrorMessage(null);
     } catch {
       setErrorMessage('שגיאה בעדכון פרטי הכרטיס');
@@ -185,62 +149,42 @@ export function HouseholdSettings(): React.ReactElement {
     }
   }
 
-  async function handleCreateCategory(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    const budgetTargetIls = parseBudgetInput(newCategoryForm.budgetTarget);
-
+  async function handleCreateCategory(input: {
+    name: string;
+    spendingNature: SpendingNature;
+    color: string;
+    budgetTargetIls: number | null;
+  }): Promise<void> {
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCategoryForm.name.trim(),
-          spendingNature: newCategoryForm.spendingNature,
-          color: newCategoryForm.color,
-          budgetTargetIls,
-        }),
+        body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error('Create category failed');
       const created = (await res.json()) as CategoryDto;
       setCategories((prev) => [...prev, created].sort(compareCategories));
-      setNewCategoryForm((prev) => ({
-        ...prev,
-        name: '',
-        budgetTarget: '',
-      }));
       setErrorMessage(null);
     } catch {
       setErrorMessage('שגיאה ביצירת קטגוריה חדשה');
     }
   }
 
-  function startEditCategory(cat: CategoryDto): void {
-    setEditingCatId(cat.id);
-    setEditCategoryForm({
-      name: cat.name,
-      spendingNature: cat.spendingNature,
-      color: cat.color,
-      budgetTarget:
-        cat.budgetTargetIls !== null ? String(cat.budgetTargetIls) : '',
-      sortOrder: String(cat.sortOrder),
-    });
-  }
-
-  async function handleSaveCategoryEdit(id: string): Promise<void> {
-    const budgetTargetIls = parseBudgetInput(editCategoryForm.budgetTarget);
-    const parsedOrder = Number(editCategoryForm.sortOrder);
-
+  async function handleUpdateCategory(
+    id: string,
+    input: {
+      name: string;
+      spendingNature: SpendingNature;
+      color: string;
+      budgetTargetIls: number | null;
+      sortOrder?: number;
+    },
+  ): Promise<void> {
     try {
       const res = await fetch(`/api/categories/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editCategoryForm.name.trim(),
-          spendingNature: editCategoryForm.spendingNature,
-          color: editCategoryForm.color,
-          budgetTargetIls,
-          sortOrder: Number.isNaN(parsedOrder) ? undefined : parsedOrder,
-        }),
+        body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error('Update category failed');
       const updated = (await res.json()) as CategoryDto;
@@ -249,7 +193,6 @@ export function HouseholdSettings(): React.ReactElement {
           .map((cat) => (cat.id === id ? updated : cat))
           .sort(compareCategories),
       );
-      setEditingCatId(null);
       setErrorMessage(null);
     } catch {
       setErrorMessage('שגיאה בעדכון הקטגוריה');
@@ -297,29 +240,15 @@ export function HouseholdSettings(): React.ReactElement {
       <CardSettingsSection
         cards={cards}
         cardholders={cardholders}
-        newCardForm={newCardForm}
-        onNewCardFormChange={setNewCardForm}
         onCreateCard={handleCreateCard}
-        editingCardId={editingCardId}
-        editCardForm={editCardForm}
-        onStartEditCard={startEditCard}
-        onCancelEditCard={() => setEditingCardId(null)}
-        onEditCardFormChange={setEditCardForm}
-        onSaveCardEdit={handleSaveCardEdit}
+        onUpdateCard={handleUpdateCard}
         onDeleteCard={handleDeleteCard}
       />
 
       <CategorySettingsSection
         categories={categories}
-        newCategoryForm={newCategoryForm}
-        onNewCategoryFormChange={setNewCategoryForm}
         onCreateCategory={handleCreateCategory}
-        editingCatId={editingCatId}
-        editCategoryForm={editCategoryForm}
-        onStartEditCategory={startEditCategory}
-        onCancelEditCategory={() => setEditingCatId(null)}
-        onEditCategoryFormChange={setEditCategoryForm}
-        onSaveCategoryEdit={handleSaveCategoryEdit}
+        onUpdateCategory={handleUpdateCategory}
       />
     </div>
   );

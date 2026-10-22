@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { CardDto, CardholderDto, CardProvider } from '@bills/shared';
-import type { CardFormState } from './types.js';
+import { type CardFormState, INITIAL_CARD_FORM } from './types.js';
 
 const PROVIDER_LABELS: Record<CardProvider, string> = {
   ISRACARD: 'ישראכרט',
@@ -11,32 +11,73 @@ const PROVIDER_LABELS: Record<CardProvider, string> = {
 export interface CardSettingsSectionProps {
   cards: CardDto[];
   cardholders: CardholderDto[];
-  newCardForm: CardFormState;
-  onNewCardFormChange: React.Dispatch<React.SetStateAction<CardFormState>>;
-  onCreateCard: (e: React.FormEvent) => Promise<void>;
-  editingCardId: string | null;
-  editCardForm: CardFormState;
-  onStartEditCard: (card: CardDto) => void;
-  onCancelEditCard: () => void;
-  onEditCardFormChange: React.Dispatch<React.SetStateAction<CardFormState>>;
-  onSaveCardEdit: (id: string) => Promise<void>;
+  onCreateCard: (input: {
+    nickname: string;
+    lastFourDigits: string;
+    provider: CardProvider;
+    cardholderId: string;
+  }) => Promise<void>;
+  onUpdateCard: (
+    id: string,
+    input: {
+      nickname: string;
+      lastFourDigits: string;
+      provider: CardProvider;
+      cardholderId: string;
+    },
+  ) => Promise<void>;
   onDeleteCard: (id: string) => Promise<void>;
 }
 
 export function CardSettingsSection({
   cards,
   cardholders,
-  newCardForm,
-  onNewCardFormChange,
   onCreateCard,
-  editingCardId,
-  editCardForm,
-  onStartEditCard,
-  onCancelEditCard,
-  onEditCardFormChange,
-  onSaveCardEdit,
+  onUpdateCard,
   onDeleteCard,
 }: CardSettingsSectionProps): React.ReactElement {
+  const [newCardForm, setNewCardForm] = useState<CardFormState>(() => ({
+    ...INITIAL_CARD_FORM,
+    cardholderId: cardholders[0]?.id ?? '',
+  }));
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editCardForm, setEditCardForm] =
+    useState<CardFormState>(INITIAL_CARD_FORM);
+
+  async function handleCreate(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    await onCreateCard({
+      nickname: newCardForm.nickname.trim(),
+      lastFourDigits: newCardForm.lastFourDigits.trim(),
+      provider: newCardForm.provider,
+      cardholderId: newCardForm.cardholderId || (cardholders[0]?.id ?? ''),
+    });
+    setNewCardForm({
+      ...INITIAL_CARD_FORM,
+      cardholderId: cardholders[0]?.id ?? '',
+    });
+  }
+
+  function startEdit(card: CardDto): void {
+    setEditingCardId(card.id);
+    setEditCardForm({
+      nickname: card.nickname,
+      lastFourDigits: card.lastFourDigits,
+      provider: card.provider,
+      cardholderId: card.cardholderId,
+    });
+  }
+
+  async function handleSaveEdit(id: string): Promise<void> {
+    await onUpdateCard(id, {
+      nickname: editCardForm.nickname.trim(),
+      lastFourDigits: editCardForm.lastFourDigits.trim(),
+      provider: editCardForm.provider,
+      cardholderId: editCardForm.cardholderId,
+    });
+    setEditingCardId(null);
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h3 className="text-base font-semibold text-slate-900">
@@ -47,7 +88,7 @@ export function CardSettingsSection({
       </p>
 
       <form
-        onSubmit={(e) => void onCreateCard(e)}
+        onSubmit={(e) => void handleCreate(e)}
         className="mt-4 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-5"
       >
         <input
@@ -56,7 +97,7 @@ export function CardSettingsSection({
           aria-label="כינוי כרטיס חדש"
           value={newCardForm.nickname}
           onChange={(e) =>
-            onNewCardFormChange((prev) => ({
+            setNewCardForm((prev) => ({
               ...prev,
               nickname: e.target.value,
             }))
@@ -71,7 +112,7 @@ export function CardSettingsSection({
           maxLength={4}
           value={newCardForm.lastFourDigits}
           onChange={(e) =>
-            onNewCardFormChange((prev) => ({
+            setNewCardForm((prev) => ({
               ...prev,
               lastFourDigits: e.target.value,
             }))
@@ -83,7 +124,7 @@ export function CardSettingsSection({
           aria-label="חברת אשראי לכרטיס חדש"
           value={newCardForm.provider}
           onChange={(e) =>
-            onNewCardFormChange((prev) => ({
+            setNewCardForm((prev) => ({
               ...prev,
               provider: e.target.value as CardProvider,
             }))
@@ -96,9 +137,9 @@ export function CardSettingsSection({
         </select>
         <select
           aria-label="מחזיק כרטיס לכרטיס חדש"
-          value={newCardForm.cardholderId}
+          value={newCardForm.cardholderId || (cardholders[0]?.id ?? '')}
           onChange={(e) =>
-            onNewCardFormChange((prev) => ({
+            setNewCardForm((prev) => ({
               ...prev,
               cardholderId: e.target.value,
             }))
@@ -123,7 +164,7 @@ export function CardSettingsSection({
         {cards.length === 0 ? (
           <p className="text-xs text-slate-500">
             טרם נרשמו כרטיסי אשראי. ניתן להוסיף כאן או לשייך אוטומטית בעת העלאת
-            דוח.
+            דף פירוט.
           </p>
         ) : (
           cards.map((card) => {
@@ -143,7 +184,7 @@ export function CardSettingsSection({
                       aria-label="ערוך כינוי כרטיס"
                       value={editCardForm.nickname}
                       onChange={(e) =>
-                        onEditCardFormChange((prev) => ({
+                        setEditCardForm((prev) => ({
                           ...prev,
                           nickname: e.target.value,
                         }))
@@ -156,7 +197,7 @@ export function CardSettingsSection({
                       maxLength={4}
                       value={editCardForm.lastFourDigits}
                       onChange={(e) =>
-                        onEditCardFormChange((prev) => ({
+                        setEditCardForm((prev) => ({
                           ...prev,
                           lastFourDigits: e.target.value,
                         }))
@@ -167,7 +208,7 @@ export function CardSettingsSection({
                       aria-label="ערוך חברת אשראי"
                       value={editCardForm.provider}
                       onChange={(e) =>
-                        onEditCardFormChange((prev) => ({
+                        setEditCardForm((prev) => ({
                           ...prev,
                           provider: e.target.value as CardProvider,
                         }))
@@ -182,7 +223,7 @@ export function CardSettingsSection({
                       aria-label="ערוך מחזיק כרטיס"
                       value={editCardForm.cardholderId}
                       onChange={(e) =>
-                        onEditCardFormChange((prev) => ({
+                        setEditCardForm((prev) => ({
                           ...prev,
                           cardholderId: e.target.value,
                         }))
@@ -197,14 +238,14 @@ export function CardSettingsSection({
                     </select>
                     <button
                       type="button"
-                      onClick={() => void onSaveCardEdit(card.id)}
+                      onClick={() => void handleSaveEdit(card.id)}
                       className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white"
                     >
                       שמור כרטיס
                     </button>
                     <button
                       type="button"
-                      onClick={onCancelEditCard}
+                      onClick={() => setEditingCardId(null)}
                       className="rounded-md bg-slate-200 px-3 py-1 text-xs text-slate-700"
                     >
                       ביטול
@@ -229,7 +270,7 @@ export function CardSettingsSection({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => onStartEditCard(card)}
+                        onClick={() => startEdit(card)}
                         className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                       >
                         ערוך כרטיס

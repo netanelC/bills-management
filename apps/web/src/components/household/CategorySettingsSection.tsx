@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { CategoryDto, SpendingNature } from '@bills/shared';
-import type { CategoryFormState } from './types.js';
+import {
+  type CategoryFormState,
+  INITIAL_CATEGORY_FORM,
+  parseBudgetInput,
+} from './types.js';
 
 const SPENDING_NATURE_META: Record<
   SpendingNature,
@@ -31,45 +35,86 @@ const SPENDING_NATURES: readonly SpendingNature[] = [
 
 export interface CategorySettingsSectionProps {
   categories: CategoryDto[];
-  newCategoryForm: CategoryFormState;
-  onNewCategoryFormChange: React.Dispatch<
-    React.SetStateAction<CategoryFormState>
-  >;
-  onCreateCategory: (e: React.FormEvent) => Promise<void>;
-  editingCatId: string | null;
-  editCategoryForm: CategoryFormState;
-  onStartEditCategory: (cat: CategoryDto) => void;
-  onCancelEditCategory: () => void;
-  onEditCategoryFormChange: React.Dispatch<
-    React.SetStateAction<CategoryFormState>
-  >;
-  onSaveCategoryEdit: (id: string) => Promise<void>;
+  onCreateCategory: (input: {
+    name: string;
+    spendingNature: SpendingNature;
+    color: string;
+    budgetTargetIls: number | null;
+  }) => Promise<void>;
+  onUpdateCategory: (
+    id: string,
+    input: {
+      name: string;
+      spendingNature: SpendingNature;
+      color: string;
+      budgetTargetIls: number | null;
+      sortOrder?: number;
+    },
+  ) => Promise<void>;
 }
 
 export function CategorySettingsSection({
   categories,
-  newCategoryForm,
-  onNewCategoryFormChange,
   onCreateCategory,
-  editingCatId,
-  editCategoryForm,
-  onStartEditCategory,
-  onCancelEditCategory,
-  onEditCategoryFormChange,
-  onSaveCategoryEdit,
+  onUpdateCategory,
 }: CategorySettingsSectionProps): React.ReactElement {
+  const [newCategoryForm, setNewCategoryForm] = useState<CategoryFormState>(
+    INITIAL_CATEGORY_FORM,
+  );
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editCategoryForm, setEditCategoryForm] = useState<CategoryFormState>(
+    INITIAL_CATEGORY_FORM,
+  );
+
+  async function handleCreate(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    const budgetTargetIls = parseBudgetInput(newCategoryForm.budgetTarget);
+    await onCreateCategory({
+      name: newCategoryForm.name.trim(),
+      spendingNature: newCategoryForm.spendingNature,
+      color: newCategoryForm.color,
+      budgetTargetIls,
+    });
+    setNewCategoryForm(INITIAL_CATEGORY_FORM);
+  }
+
+  function startEdit(cat: CategoryDto): void {
+    setEditingCatId(cat.id);
+    setEditCategoryForm({
+      name: cat.name,
+      spendingNature: cat.spendingNature,
+      color: cat.color,
+      budgetTarget:
+        cat.budgetTargetIls !== null ? String(cat.budgetTargetIls) : '',
+      sortOrder: String(cat.sortOrder),
+    });
+  }
+
+  async function handleSaveEdit(id: string): Promise<void> {
+    const budgetTargetIls = parseBudgetInput(editCategoryForm.budgetTarget);
+    const parsedOrder = Number(editCategoryForm.sortOrder);
+    await onUpdateCategory(id, {
+      name: editCategoryForm.name.trim(),
+      spendingNature: editCategoryForm.spendingNature,
+      color: editCategoryForm.color,
+      budgetTargetIls,
+      sortOrder: Number.isNaN(parsedOrder) ? undefined : parsedOrder,
+    });
+    setEditingCatId(null);
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h3 className="text-base font-semibold text-slate-900">
         קטלוג קטגוריות ויעדי תקציב (Categories & Budget Targets)
       </h3>
       <p className="mt-1 text-xs text-slate-500">
-        הקטגוריות מחולקות ל-3 קבוצות-על (`Spending Nature`). ניתן להוסיף,
+        הקטגוריות מחולקות לפי אופי הוצאה (`Spending Nature`). ניתן להוסיף,
         לערוך ולהגדיר יעד תקציב חודשי בש"ח (`Budget Target`).
       </p>
 
       <form
-        onSubmit={(e) => void onCreateCategory(e)}
+        onSubmit={(e) => void handleCreate(e)}
         className="mt-4 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-5"
       >
         <input
@@ -78,19 +123,16 @@ export function CategorySettingsSection({
           aria-label="שם קטגוריה חדשה"
           value={newCategoryForm.name}
           onChange={(e) =>
-            onNewCategoryFormChange((prev) => ({
-              ...prev,
-              name: e.target.value,
-            }))
+            setNewCategoryForm((prev) => ({ ...prev, name: e.target.value }))
           }
           required
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
         />
         <select
-          aria-label="קבוצת הוצאה לקטגוריה חדשה"
+          aria-label="אופי הוצאה לקטגוריה חדשה"
           value={newCategoryForm.spendingNature}
           onChange={(e) =>
-            onNewCategoryFormChange((prev) => ({
+            setNewCategoryForm((prev) => ({
               ...prev,
               spendingNature: e.target.value as SpendingNature,
             }))
@@ -106,22 +148,19 @@ export function CategorySettingsSection({
           aria-label="צבע קטגוריה חדשה"
           value={newCategoryForm.color}
           onChange={(e) =>
-            onNewCategoryFormChange((prev) => ({
-              ...prev,
-              color: e.target.value,
-            }))
+            setNewCategoryForm((prev) => ({ ...prev, color: e.target.value }))
           }
           className="h-9 w-full cursor-pointer rounded-md border border-slate-300 p-1"
         />
         <input
           type="number"
-          min="1"
+          min="0"
           step="any"
           placeholder="יעד תקציב חודשי (₪ - אופציונלי)"
           aria-label="יעד תקציב חודשי לקטגוריה חדשה"
           value={newCategoryForm.budgetTarget}
           onChange={(e) =>
-            onNewCategoryFormChange((prev) => ({
+            setNewCategoryForm((prev) => ({
               ...prev,
               budgetTarget: e.target.value,
             }))
@@ -180,7 +219,7 @@ export function CategorySettingsSection({
                             aria-label="ערוך שם קטגוריה"
                             value={editCategoryForm.name}
                             onChange={(e) =>
-                              onEditCategoryFormChange((prev) => ({
+                              setEditCategoryForm((prev) => ({
                                 ...prev,
                                 name: e.target.value,
                               }))
@@ -188,10 +227,10 @@ export function CategorySettingsSection({
                             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
                           />
                           <select
-                            aria-label="ערוך קבוצת הוצאה"
+                            aria-label="ערוך אופי הוצאה"
                             value={editCategoryForm.spendingNature}
                             onChange={(e) =>
-                              onEditCategoryFormChange((prev) => ({
+                              setEditCategoryForm((prev) => ({
                                 ...prev,
                                 spendingNature: e.target
                                   .value as SpendingNature,
@@ -210,7 +249,7 @@ export function CategorySettingsSection({
                             aria-label="ערוך צבע קטגוריה"
                             value={editCategoryForm.color}
                             onChange={(e) =>
-                              onEditCategoryFormChange((prev) => ({
+                              setEditCategoryForm((prev) => ({
                                 ...prev,
                                 color: e.target.value,
                               }))
@@ -219,13 +258,13 @@ export function CategorySettingsSection({
                           />
                           <input
                             type="number"
-                            min="1"
+                            min="0"
                             step="any"
                             placeholder="יעד תקציב (₪)"
                             aria-label="ערוך יעד תקציב"
                             value={editCategoryForm.budgetTarget}
                             onChange={(e) =>
-                              onEditCategoryFormChange((prev) => ({
+                              setEditCategoryForm((prev) => ({
                                 ...prev,
                                 budgetTarget: e.target.value,
                               }))
@@ -237,7 +276,7 @@ export function CategorySettingsSection({
                             aria-label="ערוך סדר תצוגה"
                             value={editCategoryForm.sortOrder}
                             onChange={(e) =>
-                              onEditCategoryFormChange((prev) => ({
+                              setEditCategoryForm((prev) => ({
                                 ...prev,
                                 sortOrder: e.target.value,
                               }))
@@ -246,16 +285,14 @@ export function CategorySettingsSection({
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              void onSaveCategoryEdit(cat.id)
-                            }
+                            onClick={() => void handleSaveEdit(cat.id)}
                             className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white"
                           >
                             שמור קטגוריה
                           </button>
                           <button
                             type="button"
-                            onClick={onCancelEditCategory}
+                            onClick={() => setEditingCatId(null)}
                             className="rounded-md bg-slate-200 px-3 py-1 text-xs text-slate-700"
                           >
                             ביטול
@@ -282,7 +319,7 @@ export function CategorySettingsSection({
                             <button
                               type="button"
                               aria-label={`ערוך קטגוריה ${cat.name}`}
-                              onClick={() => onStartEditCategory(cat)}
+                              onClick={() => startEdit(cat)}
                               className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                             >
                               ערוך
