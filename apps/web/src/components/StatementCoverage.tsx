@@ -9,7 +9,6 @@ import {
   type BillingMonth,
   type CardCoverageRowDto,
   type CardholderDto,
-  type CardProvider,
   type CategoryDto,
   type ColumnMappingOverrideDto,
   type CoverageMatrixResponseDto,
@@ -18,6 +17,11 @@ import {
   type UpdateTransactionInput,
 } from '@bills/shared';
 import {
+  buildDefaultCardNickname,
+  StatementBatchPreviewSection,
+  type CardOnboardingDraft,
+} from './statements/StatementBatchPreviewSection.js';
+import {
   requestTransactionUpdate,
   TransactionInlineControls,
 } from './TransactionInlineControls.js';
@@ -25,12 +29,6 @@ import {
 interface UploadedFileBuffer {
   filename: string;
   contentBase64: string;
-}
-
-interface CardOnboardingDraft {
-  cardholderId: string;
-  nickname: string;
-  provider: CardProvider;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -60,14 +58,6 @@ function readFileAsBase64(file: File): Promise<string> {
     };
     reader.readAsArrayBuffer(file);
   });
-}
-
-function buildDefaultCardNickname(
-  provider: CardProvider,
-  lastFour: string,
-): string {
-  const prefix = provider === 'AMEX' ? 'אמקס' : 'ישראכרט';
-  return `${prefix} ${lastFour}`;
 }
 
 export function StatementCoverage(): React.ReactElement {
@@ -251,24 +241,6 @@ export function StatementCoverage(): React.ReactElement {
     setStatusMessage(`מיפוי העמודות הוחל עבור ${filename}`);
   }
 
-  const unrecognizedCardsForOnboarding = useMemo(() => {
-    const map = new Map<string, CardProvider>();
-    for (const file of previewFiles) {
-      if (file.existingCard) continue;
-      const lastFour = (
-        file.detectedLastFour ??
-        manualLastFourByFile[file.filename] ??
-        ''
-      ).trim();
-      if (/^\d{4}$/.test(lastFour) && !map.has(lastFour)) {
-        map.set(lastFour, file.detectedProvider);
-      }
-    }
-    return Array.from(map.entries()).map(([lastFour, provider]) => ({
-      lastFour,
-      provider,
-    }));
-  }, [previewFiles, manualLastFourByFile]);
 
   const groupedCoverageRows = useMemo(() => {
     if (!coverage) return [];
@@ -437,295 +409,44 @@ export function StatementCoverage(): React.ReactElement {
         </div>
 
         {previewFiles.length > 0 ? (
-          <div
-            data-testid="statement-preview-panel"
-            className="mt-6 space-y-4 border-t border-indigo-200 pt-4"
-          >
-            <h4 className="text-sm font-semibold text-slate-900">
-              תצוגה מקדימה לפני ייבוא ({previewFiles.length} קבצים)
-            </h4>
-
-            {/* Once-per-card Onboarding Section */}
-            {unrecognizedCardsForOnboarding.length > 0 ? (
-              <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-xs font-semibold text-amber-900">
-                  זוהו כרטיסים חדשים — הגדר שיוך חד-פעמי לכל כרטיס:
-                </p>
-                {unrecognizedCardsForOnboarding.map(({ lastFour, provider }) => {
-                  const onboarding = onboardingByLastFour[lastFour];
-                  const defaultNickname = buildDefaultCardNickname(
-                    provider,
-                    lastFour,
-                  );
-
-                  return (
-                    <div
-                      key={lastFour}
-                      className="grid gap-3 rounded-md border border-amber-200/80 bg-white p-3 sm:grid-cols-2"
-                    >
-                      <label className="block text-xs text-slate-700">
-                        מחזיק כרטיס עבור {lastFour}
-                        <select
-                          aria-label={`מחזיק כרטיס עבור ${lastFour}`}
-                          value={
-                            onboarding?.cardholderId ??
-                            cardholders[0]?.id ??
-                            ''
-                          }
-                          onChange={(e) =>
-                            setOnboardingByLastFour((prev) => ({
-                              ...prev,
-                              [lastFour]: {
-                                cardholderId: e.target.value,
-                                nickname:
-                                  prev[lastFour]?.nickname ?? defaultNickname,
-                                provider: prev[lastFour]?.provider ?? provider,
-                              },
-                            }))
-                          }
-                          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                        >
-                          {cardholders.map((ch) => (
-                            <option key={ch.id} value={ch.id}>
-                              {ch.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="block text-xs text-slate-700">
-                        כינוי כרטיס עבור {lastFour}
-                        <input
-                          type="text"
-                          aria-label={`כינוי כרטיס עבור ${lastFour}`}
-                          value={onboarding?.nickname ?? defaultNickname}
-                          onChange={(e) =>
-                            setOnboardingByLastFour((prev) => ({
-                              ...prev,
-                              [lastFour]: {
-                                cardholderId:
-                                  prev[lastFour]?.cardholderId ??
-                                  cardholders[0]?.id ??
-                                  'cardholder-primary',
-                                nickname: e.target.value,
-                                provider: prev[lastFour]?.provider ?? provider,
-                              },
-                            }))
-                          }
-                          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                        />
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            <div className="space-y-4">
-              {previewFiles.map((file) => {
-                const lastFour =
-                  file.detectedLastFour ??
-                  manualLastFourByFile[file.filename] ??
-                  '';
-                const mapping = columnMappingsByFile[file.filename] ?? {
-                  purchaseDateIndex: 0,
-                  rawMerchantNameIndex: 1,
-                  billedAmountIlsIndex: 2,
-                };
-
-                return (
-                  <div
-                    key={file.filename}
-                    className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <span className="font-semibold text-slate-900">
-                          {file.filename}
-                        </span>
-                        <span className="mr-2 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                          {file.detectedProvider} •{' '}
-                          {lastFour ? `•••• ${lastFour}` : 'ללא זיהוי כרטיס'}
-                        </span>
-                        <span className="mr-2 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                          חודש חיוב: {file.detectedBillingMonth ?? 'לא זוהה'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="font-medium text-emerald-700">
-                          {file.newTransactionsCount} עסקאות חדשות
-                        </span>
-                        <span className="text-slate-500">
-                          {file.duplicateTransactionsCount} כפילויות שידולגו
-                        </span>
-                        <span className="font-semibold text-slate-900">
-                          סה&quot;כ: ₪
-                          {file.totalBilledIls.toLocaleString('he-IL')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {!file.detectedLastFour ? (
-                      <div className="mt-3 flex items-center gap-2">
-                        <label className="text-xs text-slate-700">
-                          4 ספרות אחרונות:
-                          <input
-                            type="text"
-                            maxLength={4}
-                            value={manualLastFourByFile[file.filename] ?? ''}
-                            onChange={(e) =>
-                              setManualLastFourByFile((prev) => ({
-                                ...prev,
-                                [file.filename]: e.target.value,
-                              }))
-                            }
-                            className="mr-2 w-24 rounded-md border border-slate-300 px-2 py-1 text-xs"
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {!file.detectedBillingMonth ? (
-                      <div className="mt-3 flex items-center gap-2">
-                        <label className="text-xs text-slate-700">
-                          חודש חיוב (YYYY-MM):
-                          <input
-                            type="text"
-                            placeholder="2026-03"
-                            value={manualMonthByFile[file.filename] ?? ''}
-                            onChange={(e) =>
-                              setManualMonthByFile((prev) => ({
-                                ...prev,
-                                [file.filename]: e.target.value,
-                              }))
-                            }
-                            className="mr-2 w-28 rounded-md border border-slate-300 px-2 py-1 text-xs"
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {file.requiresColumnMapping ? (
-                      <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 p-3">
-                        <p className="mb-2 text-xs font-semibold text-rose-900">
-                          לא זוהו כותרות מוכרות בקובץ זה — בחר מיפוי עמודות ידני:
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-4">
-                          <label className="block text-xs text-slate-700">
-                            עמודת תאריך עסקה
-                            <select
-                              aria-label={`עמודת תאריך עבור ${file.filename}`}
-                              value={mapping.purchaseDateIndex}
-                              onChange={(e) =>
-                                setColumnMappingsByFile((prev) => ({
-                                  ...prev,
-                                  [file.filename]: {
-                                    ...mapping,
-                                    purchaseDateIndex: Number(e.target.value),
-                                  },
-                                }))
-                              }
-                              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                            >
-                              {file.availableHeaders.map((h, idx) => (
-                                <option key={idx} value={idx}>
-                                  {h || `עמודה ${idx + 1}`}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label className="block text-xs text-slate-700">
-                            עמודת שם בית עסק
-                            <select
-                              aria-label={`עמודת בית עסק עבור ${file.filename}`}
-                              value={mapping.rawMerchantNameIndex}
-                              onChange={(e) =>
-                                setColumnMappingsByFile((prev) => ({
-                                  ...prev,
-                                  [file.filename]: {
-                                    ...mapping,
-                                    rawMerchantNameIndex: Number(
-                                      e.target.value,
-                                    ),
-                                  },
-                                }))
-                              }
-                              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                            >
-                              {file.availableHeaders.map((h, idx) => (
-                                <option key={idx} value={idx}>
-                                  {h || `עמודה ${idx + 1}`}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label className="block text-xs text-slate-700">
-                            עמודת סכום חיוב בש&quot;ח
-                            <select
-                              aria-label={`עמודת סכום עבור ${file.filename}`}
-                              value={mapping.billedAmountIlsIndex}
-                              onChange={(e) =>
-                                setColumnMappingsByFile((prev) => ({
-                                  ...prev,
-                                  [file.filename]: {
-                                    ...mapping,
-                                    billedAmountIlsIndex: Number(
-                                      e.target.value,
-                                    ),
-                                  },
-                                }))
-                              }
-                              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
-                            >
-                              {file.availableHeaders.map((h, idx) => (
-                                <option key={idx} value={idx}>
-                                  {h || `עמודה ${idx + 1}`}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void handleApplyColumnMapping(file.filename)
-                              }
-                              className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
-                            >
-                              החל מיפוי עמודות
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewFiles([]);
-                  setRawFiles([]);
-                }}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                ביטול
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleCommitBatch()}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-              >
-                אישור וייבוא דוחות
-              </button>
-            </div>
-          </div>
+          <StatementBatchPreviewSection
+            previewFiles={previewFiles}
+            cardholders={cardholders}
+            onboardingByLastFour={onboardingByLastFour}
+            manualLastFourByFile={manualLastFourByFile}
+            manualMonthByFile={manualMonthByFile}
+            columnMappingsByFile={columnMappingsByFile}
+            onUpdateOnboarding={(lastFour, updater) =>
+              setOnboardingByLastFour((prev) => ({
+                ...prev,
+                [lastFour]: updater(prev[lastFour]),
+              }))
+            }
+            onUpdateManualLastFour={(filename, val) =>
+              setManualLastFourByFile((prev) => ({
+                ...prev,
+                [filename]: val,
+              }))
+            }
+            onUpdateManualMonth={(filename, val) =>
+              setManualMonthByFile((prev) => ({
+                ...prev,
+                [filename]: val,
+              }))
+            }
+            onUpdateColumnMapping={(filename, mapping) =>
+              setColumnMappingsByFile((prev) => ({
+                ...prev,
+                [filename]: mapping,
+              }))
+            }
+            onApplyColumnMapping={(filename) => void handleApplyColumnMapping(filename)}
+            onCancel={() => {
+              setPreviewFiles([]);
+              setRawFiles([]);
+            }}
+            onCommit={() => void handleCommitBatch()}
+          />
         ) : null}
       </section>
 

@@ -19,6 +19,7 @@ import type {
   CoverageMatrixResponseDto,
   MonthlyAnalyticsResponseDto,
   SpendingNature,
+  StatementCommitFileInput,
   StatementCommitRequestInput,
   StatementCommitResponseDto,
   StatementPreviewFileItemDto,
@@ -27,6 +28,7 @@ import type {
   UpdateTransactionInput,
 } from '@bills/shared';
 import { AppError } from '../../errors/app-error.js';
+import { buildEntityLookupMaps } from '../common/lookups.js';
 import type {
   ListTransactionsFilter,
   StatementsRepository,
@@ -140,12 +142,12 @@ export class StatementsService {
     return merchantId;
   }
 
-  commitStatements(
-    input: StatementCommitRequestInput,
-  ): StatementCommitResponseDto {
+  private validateNewCardOnboardings(
+    files: readonly StatementCommitFileInput[],
+  ): void {
     const seenNewCardsInBatch = new Set<string>();
 
-    for (const file of input.files) {
+    for (const file of files) {
       const existingCard = this.repository.findCardByLastFour(
         file.cardLastFour,
       );
@@ -169,6 +171,108 @@ export class StatementsService {
         seenNewCardsInBatch.add(file.cardLastFour);
       }
     }
+  }
+
+  private resolveOrCreateCardForCommit(
+    file: StatementCommitFileInput,
+  ): { card: CardDto; isNewCard: boolean } {
+    let card = this.repository.findCardByLastFour(file.cardLastFour);
+    if (card) {
+      return { card, isNewCard: false };
+    }
+    const onboarding = file.newCardOnboarding!;
+    const createdCard: CardDto = {
+      id: `card-${crypto.randomUUID()}`,
+      cardholderId: onboarding.cardholderId,
+      lastFourDigits: file.cardLastFour,
+      provider: (onboarding.provider ?? file.provider) as CardProvider,
+      nickname: onboarding.nickname.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    this.repository.insertCard(createdCard);
+    return { card: createdCard, isNewCard: true };
+  }
+
+  private upsertStatementForCommit(params: {
+    cardId: string;
+    billingMonth: BillingMonth;
+    filename: string;
+    addedTotalBilledIls: number;
+    hasNewTransactions: boolean;
+  }): { statement: { id: string; totalBilledIls: number }; isNewStatement: boolean } {
+    const { cardId, billingMonth, filename, addedTotalBilledIls, hasNewTransactions } =
+      params;
+    let statement = this.repository.findStatementByCardAndMonth(
+      cardId,
+      billingMonth,
+    );
+
+    if (!statement) {
+      const newStatement = {
+        id: `stmt-${crypto.randomUUID()}`,
+        cardId,
+        billingMonth,
+        sourceFilename: filename,
+        totalBilledIls: addedTotalBilledIls,
+        importedAt: new Date().toISOString(),
+      };
+      this.repository.insertStatement(newStatement);
+      return { statement: newStatement, isNewStatement: true };
+    }
+
+    if (hasNewTransactions) {
+      const updatedTotal = roundCurrency(
+        statement.totalBilledIls + addedTotalBilledIls,
+      );
+      this.repository.updateStatementTotal(statement.id, updatedTotal);
+      return {
+        statement: { ...statement, totalBilledIls: updatedTotal },
+        isNewStatement: true,
+      };
+    }
+
+    return { statement, isNewStatement: false };
+  }
+
+  private insertCommittedTransactions(params: {
+    statementId: string;
+    cardId: string;
+    billingMonth: BillingMonth;
+    newTxInputs: readonly (StatementCommitFileInput['transactions'][number] & {
+      dedupFingerprint: string;
+    })[];
+  }): void {
+    for (const txInput of params.newTxInputs) {
+      const merchantId = this.resolveOrCreateMerchantId(
+        txInput.rawMerchantName,
+      );
+
+      this.repository.insertTransaction({
+        id: `tx-${crypto.randomUUID()}`,
+        statementId: params.statementId,
+        cardId: params.cardId,
+        merchantId,
+        billingMonth: params.billingMonth,
+        purchaseDate: txInput.purchaseDate,
+        rawMerchantName: txInput.rawMerchantName,
+        billedAmountIls: txInput.billedAmountIls,
+        originalAmount: txInput.originalAmount,
+        originalCurrency: txInput.originalCurrency,
+        installmentCurrent: txInput.installmentCurrent,
+        installmentTotal: txInput.installmentTotal,
+        installmentTotalAmountIls: txInput.installmentTotalAmountIls,
+        categoryOverrideId: null,
+        notes: null,
+        isExcluded: false,
+        dedupFingerprint: txInput.dedupFingerprint,
+      });
+    }
+  }
+
+  commitStatements(
+    input: StatementCommitRequestInput,
+  ): StatementCommitResponseDto {
+    this.validateNewCardOnboardings(input.files);
 
     return this.repository.runInTransaction(() => {
       let importedStatementsCount = 0;
@@ -184,21 +288,8 @@ export class StatementsService {
           file.transactions,
         );
 
-        let card = this.repository.findCardByLastFour(file.cardLastFour);
-        if (!card) {
-          const onboarding = file.newCardOnboarding!;
-          const createdCard: CardDto = {
-            id: `card-${crypto.randomUUID()}`,
-            cardholderId: onboarding.cardholderId,
-            lastFourDigits: file.cardLastFour,
-            provider: (onboarding.provider ?? file.provider) as CardProvider,
-            nickname: onboarding.nickname.trim(),
-            createdAt: new Date().toISOString(),
-          };
-          this.repository.insertCard(createdCard);
-          card = createdCard;
-          newCardsCount += 1;
-        }
+        const { card, isNewCard } = this.resolveOrCreateCardForCommit(file);
+        if (isNewCard) newCardsCount += 1;
         touchedCards.set(card.id, card);
 
         const existingFingerprints =
@@ -209,67 +300,29 @@ export class StatementsService {
         const newTxInputs = fingerprintedTransactions.filter(
           (tx) => !existingFingerprints.has(tx.dedupFingerprint),
         );
-        const fileDuplicatesCount =
+        skippedDuplicatesCount +=
           fingerprintedTransactions.length - newTxInputs.length;
-        skippedDuplicatesCount += fileDuplicatesCount;
 
         const addedTotalBilledIls = roundCurrency(
           newTxInputs.reduce((acc, tx) => acc + tx.billedAmountIls, 0),
         );
 
-        let statement = this.repository.findStatementByCardAndMonth(
-          card.id,
-          file.billingMonth,
-        );
+        const { statement, isNewStatement } = this.upsertStatementForCommit({
+          cardId: card.id,
+          billingMonth: file.billingMonth,
+          filename: file.filename,
+          addedTotalBilledIls,
+          hasNewTransactions: newTxInputs.length > 0,
+        });
+        if (isNewStatement) importedStatementsCount += 1;
 
-        if (!statement) {
-          const newStatement = {
-            id: `stmt-${crypto.randomUUID()}`,
-            cardId: card.id,
-            billingMonth: file.billingMonth,
-            sourceFilename: file.filename,
-            totalBilledIls: addedTotalBilledIls,
-            importedAt: new Date().toISOString(),
-          };
-          this.repository.insertStatement(newStatement);
-          statement = newStatement;
-          importedStatementsCount += 1;
-        } else if (newTxInputs.length > 0) {
-          const updatedTotal = roundCurrency(
-            statement.totalBilledIls + addedTotalBilledIls,
-          );
-          this.repository.updateStatementTotal(statement.id, updatedTotal);
-          statement = { ...statement, totalBilledIls: updatedTotal };
-          importedStatementsCount += 1;
-        }
-
-        for (const txInput of newTxInputs) {
-          const merchantId = this.resolveOrCreateMerchantId(
-            txInput.rawMerchantName,
-          );
-
-          this.repository.insertTransaction({
-            id: `tx-${crypto.randomUUID()}`,
-            statementId: statement.id,
-            cardId: card.id,
-            merchantId,
-            billingMonth: file.billingMonth,
-            purchaseDate: txInput.purchaseDate,
-            rawMerchantName: txInput.rawMerchantName,
-            billedAmountIls: txInput.billedAmountIls,
-            originalAmount: txInput.originalAmount,
-            originalCurrency: txInput.originalCurrency,
-            installmentCurrent: txInput.installmentCurrent,
-            installmentTotal: txInput.installmentTotal,
-            installmentTotalAmountIls: txInput.installmentTotalAmountIls,
-            categoryOverrideId: null,
-            notes: null,
-            isExcluded: false,
-            dedupFingerprint: txInput.dedupFingerprint,
-          });
-
-          newTransactionsCount += 1;
-        }
+        this.insertCommittedTransactions({
+          statementId: statement.id,
+          cardId: card.id,
+          billingMonth: file.billingMonth,
+          newTxInputs,
+        });
+        newTransactionsCount += newTxInputs.length;
       }
 
       return {
@@ -359,26 +412,22 @@ export class StatementsService {
 
   private loadTransactionLookupMaps() {
     const allCardholders = this.repository.listAllCardholders();
-    const cardholderMap = new Map(allCardholders.map((c) => [c.id, c.name]));
-
-    const allCards = this.repository.listAllCards();
-    const cardMap = new Map(allCards.map((c) => [c.id, c]));
-
-    const allMerchants = this.repository.listAllMerchants();
-    const merchantMap = new Map(allMerchants.map((m) => [m.id, m]));
-
     const allCategories = this.repository.listAllCategories();
-    const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
-    const categoryById = new Map(allCategories.map((c) => [c.id, c]));
+    const lookups = buildEntityLookupMaps({
+      cardholders: allCardholders,
+      cards: this.repository.listAllCards(),
+      categories: allCategories,
+      merchants: this.repository.listAllMerchants(),
+    });
 
     return {
       allCardholders,
       allCategories,
-      cardholderMap,
-      cardMap,
-      merchantMap,
-      categoryNameById,
-      categoryById,
+      cardholderMap: lookups.cardholderNameMap,
+      cardMap: lookups.cardMap,
+      merchantMap: lookups.merchantMap,
+      categoryNameById: lookups.categoryNameById,
+      categoryById: lookups.categoryById,
     };
   }
 

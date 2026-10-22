@@ -13,6 +13,7 @@ import type {
   UpdateMerchantInput,
 } from '@bills/shared';
 import { AppError } from '../../errors/app-error.js';
+import { buildEntityLookupMaps } from '../common/lookups.js';
 import type { MerchantsRepository } from './repository.js';
 
 function buildMerchantDto(params: {
@@ -118,16 +119,14 @@ export class MerchantsService {
   getInbox(): InboxResponseDto {
     const merchantsList = this.listMerchants();
     const allTransactions = this.repository.listAllTransactions();
-    const allCards = this.repository.listAllCards();
-    const allCardholders = this.repository.listAllCardholders();
-    const allCategories = this.repository.listAllCategories();
-
-    const cardMap = new Map(allCards.map((c) => [c.id, c]));
-    const cardholderNameMap = new Map(
-      allCardholders.map((ch) => [ch.id, ch.name]),
-    );
-    const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
-    const merchantMap = new Map(merchantsList.map((m) => [m.id, m]));
+    const lookups = buildEntityLookupMaps({
+      cardholders: this.repository.listAllCardholders(),
+      cards: this.repository.listAllCards(),
+      categories: this.repository.listAllCategories(),
+      merchants: merchantsList,
+    });
+    const { cardMap, cardholderNameMap, categoryNameById, merchantMap } =
+      lookups;
 
     const txsByMerchant = new Map<string, SampleTransactionDto[]>();
     const ambiguousTransactions: TransactionListItemDto[] = [];

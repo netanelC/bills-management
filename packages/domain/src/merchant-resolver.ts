@@ -102,23 +102,43 @@ export interface RawTransactionForMapping {
   isExcluded: boolean;
 }
 
-export function buildResolvedTransactionItem(params: {
-  tx: RawTransactionForMapping;
-  card: {
-    lastFourDigits: string;
-    nickname: string;
-    provider: 'ISRACARD' | 'AMEX' | 'OTHER';
-    cardholderId: string;
-  };
+export interface TransactionResolutionCardContext {
+  lastFourDigits: string;
+  nickname: string;
+  provider: 'ISRACARD' | 'AMEX' | 'OTHER';
+  cardholderId: string;
+}
+
+export interface TransactionResolutionMerchantContext {
+  canonicalName: string;
+  defaultCategoryId: string | null;
+  isAmbiguous: boolean;
+}
+
+export interface TransactionResolutionContext {
+  card: TransactionResolutionCardContext;
   cardholderName: string;
-  merchant: {
-    canonicalName: string;
-    defaultCategoryId: string | null;
-    isAmbiguous: boolean;
-  } | undefined;
+  merchant?: TransactionResolutionMerchantContext | null;
   categoryNameById: ReadonlyMap<string, string>;
-}) {
-  const { tx, card, cardholderName, merchant, categoryNameById } = params;
+}
+
+export type BuildResolvedTransactionParams =
+  | {
+      tx: RawTransactionForMapping;
+      context: TransactionResolutionContext;
+    }
+  | ({
+      tx: RawTransactionForMapping;
+    } & TransactionResolutionContext);
+
+export function buildResolvedTransactionItem(
+  params: BuildResolvedTransactionParams,
+) {
+  const tx = params.tx;
+  const context: TransactionResolutionContext =
+    'context' in params ? params.context : params;
+  const { card, cardholderName, merchant, categoryNameById } = context;
+
   const effectiveCategoryId = resolveEffectiveCategoryId({
     transactionCategoryOverrideId: tx.categoryOverrideId,
     merchantDefaultCategoryId: merchant?.defaultCategoryId ?? null,
