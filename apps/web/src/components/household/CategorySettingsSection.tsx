@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import type { CategoryDto, SpendingNature } from '@bills/shared';
+import type {
+  CategoryDto,
+  CreateCategoryInput,
+  SpendingNature,
+  UpdateCategoryInput,
+} from '@bills/shared';
 import {
   type CategoryFormState,
   INITIAL_CATEGORY_FORM,
@@ -35,22 +40,8 @@ const SPENDING_NATURES: readonly SpendingNature[] = [
 
 export interface CategorySettingsSectionProps {
   categories: CategoryDto[];
-  onCreateCategory: (input: {
-    name: string;
-    spendingNature: SpendingNature;
-    color: string;
-    budgetTargetIls: number | null;
-  }) => Promise<void>;
-  onUpdateCategory: (
-    id: string,
-    input: {
-      name: string;
-      spendingNature: SpendingNature;
-      color: string;
-      budgetTargetIls: number | null;
-      sortOrder?: number;
-    },
-  ) => Promise<void>;
+  onCreateCategory: (input: CreateCategoryInput) => Promise<void>;
+  onUpdateCategory: (id: string, input: UpdateCategoryInput) => Promise<void>;
 }
 
 export function CategorySettingsSection({

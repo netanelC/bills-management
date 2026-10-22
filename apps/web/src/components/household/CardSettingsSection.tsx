@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import type { CardDto, CardholderDto, CardProvider } from '@bills/shared';
+import type {
+  CardDto,
+  CardholderDto,
+  CardProvider,
+  CreateCardInput,
+  UpdateCardInput,
+} from '@bills/shared';
 import { type CardFormState, INITIAL_CARD_FORM } from './types.js';
 
 const PROVIDER_LABELS: Record<CardProvider, string> = {
@@ -11,21 +17,8 @@ const PROVIDER_LABELS: Record<CardProvider, string> = {
 export interface CardSettingsSectionProps {
   cards: CardDto[];
   cardholders: CardholderDto[];
-  onCreateCard: (input: {
-    nickname: string;
-    lastFourDigits: string;
-    provider: CardProvider;
-    cardholderId: string;
-  }) => Promise<void>;
-  onUpdateCard: (
-    id: string,
-    input: {
-      nickname: string;
-      lastFourDigits: string;
-      provider: CardProvider;
-      cardholderId: string;
-    },
-  ) => Promise<void>;
+  onCreateCard: (input: CreateCardInput) => Promise<void>;
+  onUpdateCard: (id: string, input: UpdateCardInput) => Promise<void>;
   onDeleteCard: (id: string) => Promise<void>;
 }
 

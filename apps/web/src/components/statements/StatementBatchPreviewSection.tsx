@@ -16,7 +16,8 @@ export function buildDefaultCardNickname(
   provider: CardProvider,
   lastFour: string,
 ): string {
-  const prefix = provider === 'AMEX' ? 'אמקס' : 'ישראכרט';
+  const prefix =
+    provider === 'AMEX' ? 'אמקס' : provider === 'ISRACARD' ? 'ישראכרט' : 'כרטיס';
   return `${prefix} ${lastFour}`;
 }
 
@@ -197,11 +198,11 @@ export function StatementBatchPreviewSection({
                     {(() => {
                       const chId =
                         file.existingCard?.cardholderId ??
-                        onboardingByLastFour[lastFour]?.cardholderId ??
-                        cardholders[0]?.id;
+                        onboardingByLastFour[lastFour]?.cardholderId;
                       return (
-                        cardholders.find((ch) => ch.id === chId)?.name ??
-                        'לא זוהה'
+                        (chId &&
+                          cardholders.find((ch) => ch.id === chId)?.name) ||
+                        'טרם שוייך'
                       );
                     })()}
                   </span>

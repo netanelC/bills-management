@@ -410,13 +410,17 @@ export class StatementsService {
     };
   }
 
-  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
-    const lookups = buildEntityLookupMaps({
+  private loadEntityLookups() {
+    return buildEntityLookupMaps({
       cardholders: this.repository.listAllCardholders(),
       cards: this.repository.listAllCards(),
       categories: this.repository.listAllCategories(),
       merchants: this.repository.listAllMerchants(),
     });
+  }
+
+  listTransactions(filter: ListTransactionsFilter): TransactionListItemDto[] {
+    const lookups = this.loadEntityLookups();
 
     const txRows = this.repository.listTransactionsRaw({
       billingMonth: filter.billingMonth,
@@ -549,12 +553,7 @@ export class StatementsService {
     }
 
     const updatedTx = this.repository.findTransactionById(id)!;
-    const lookups = buildEntityLookupMaps({
-      cardholders: this.repository.listAllCardholders(),
-      cards: this.repository.listAllCards(),
-      categories: this.repository.listAllCategories(),
-      merchants: this.repository.listAllMerchants(),
-    });
+    const lookups = this.loadEntityLookups();
     const card = lookups.cardMap.get(updatedTx.cardId);
     if (!card) {
       throw new AppError({

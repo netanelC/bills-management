@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type {
   CardDto,
   CardholderDto,
-  CardProvider,
   CategoryDto,
-  SpendingNature,
+  CreateCardInput,
+  CreateCategoryInput,
+  UpdateCardInput,
+  UpdateCategoryInput,
 } from '@bills/shared';
 import { CardholderSettingsSection } from './household/CardholderSettingsSection.js';
 import { CardSettingsSection } from './household/CardSettingsSection.js';
@@ -93,12 +95,7 @@ export function HouseholdSettings(): React.ReactElement {
     }
   }
 
-  async function handleCreateCard(input: {
-    nickname: string;
-    lastFourDigits: string;
-    provider: CardProvider;
-    cardholderId: string;
-  }): Promise<void> {
+  async function handleCreateCard(input: CreateCardInput): Promise<void> {
     try {
       const res = await fetch('/api/cards', {
         method: 'POST',
@@ -116,12 +113,7 @@ export function HouseholdSettings(): React.ReactElement {
 
   async function handleUpdateCard(
     id: string,
-    input: {
-      nickname: string;
-      lastFourDigits: string;
-      provider: CardProvider;
-      cardholderId: string;
-    },
+    input: UpdateCardInput,
   ): Promise<void> {
     try {
       const res = await fetch(`/api/cards/${id}`, {
@@ -149,12 +141,9 @@ export function HouseholdSettings(): React.ReactElement {
     }
   }
 
-  async function handleCreateCategory(input: {
-    name: string;
-    spendingNature: SpendingNature;
-    color: string;
-    budgetTargetIls: number | null;
-  }): Promise<void> {
+  async function handleCreateCategory(
+    input: CreateCategoryInput,
+  ): Promise<void> {
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
@@ -172,13 +161,7 @@ export function HouseholdSettings(): React.ReactElement {
 
   async function handleUpdateCategory(
     id: string,
-    input: {
-      name: string;
-      spendingNature: SpendingNature;
-      color: string;
-      budgetTargetIls: number | null;
-      sortOrder?: number;
-    },
+    input: UpdateCategoryInput,
   ): Promise<void> {
     try {
       const res = await fetch(`/api/categories/${id}`, {
