@@ -94,7 +94,7 @@ export const CategorySchema = z.object({
   name: z.string().trim().min(1),
   spendingNature: SpendingNatureSchema,
   color: z.string().trim().min(1),
-  budgetTargetIls: z.number().nonnegative().nullable(),
+  budgetTargetIls: z.number().positive().nullable(),
   sortOrder: z.number().int(),
 });
 export type CategoryDto = z.infer<typeof CategorySchema>;
@@ -104,7 +104,7 @@ export const CreateCategorySchema = z
     name: z.string().trim().min(1, 'Category name is required'),
     spendingNature: SpendingNatureSchema,
     color: z.string().trim().min(1, 'Category color is required'),
-    budgetTargetIls: z.number().nonnegative().nullable().optional(),
+    budgetTargetIls: z.number().positive().nullable().optional(),
     sortOrder: z.number().int().optional(),
   })
   .strict();

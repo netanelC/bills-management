@@ -20,6 +20,14 @@ export function buildDefaultCardNickname(
   return `${prefix} ${lastFour}`;
 }
 
+function renderHeaderOptions(availableHeaders: readonly string[]) {
+  return availableHeaders.map((h, idx) => (
+    <option key={idx} value={idx}>
+      {h || `עמודה ${idx + 1}`}
+    </option>
+  ));
+}
+
 interface StatementBatchPreviewSectionProps {
   previewFiles: StatementPreviewFileItemDto[];
   cardholders: CardholderDto[];
@@ -143,9 +151,7 @@ export function StatementBatchPreviewSection({
                     onChange={(e) =>
                       onUpdateOnboarding(lastFour, (prev) => ({
                         cardholderId:
-                          prev?.cardholderId ??
-                          cardholders[0]?.id ??
-                          'cardholder-primary',
+                          prev?.cardholderId ?? cardholders[0]?.id ?? '',
                         nickname: e.target.value,
                         provider: prev?.provider ?? provider,
                       }))
@@ -191,10 +197,11 @@ export function StatementBatchPreviewSection({
                     {(() => {
                       const chId =
                         file.existingCard?.cardholderId ??
-                        onboardingByLastFour[lastFour]?.cardholderId;
+                        onboardingByLastFour[lastFour]?.cardholderId ??
+                        cardholders[0]?.id;
                       return (
                         cardholders.find((ch) => ch.id === chId)?.name ??
-                        'טרם שוייך'
+                        'לא זוהה'
                       );
                     })()}
                   </span>
@@ -266,11 +273,7 @@ export function StatementBatchPreviewSection({
                         }
                         className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
                       >
-                        {file.availableHeaders.map((h, idx) => (
-                          <option key={idx} value={idx}>
-                            {h || `עמודה ${idx + 1}`}
-                          </option>
-                        ))}
+                        {renderHeaderOptions(file.availableHeaders)}
                       </select>
                     </label>
 
@@ -287,11 +290,7 @@ export function StatementBatchPreviewSection({
                         }
                         className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
                       >
-                        {file.availableHeaders.map((h, idx) => (
-                          <option key={idx} value={idx}>
-                            {h || `עמודה ${idx + 1}`}
-                          </option>
-                        ))}
+                        {renderHeaderOptions(file.availableHeaders)}
                       </select>
                     </label>
 
@@ -308,11 +307,7 @@ export function StatementBatchPreviewSection({
                         }
                         className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
                       >
-                        {file.availableHeaders.map((h, idx) => (
-                          <option key={idx} value={idx}>
-                            {h || `עמודה ${idx + 1}`}
-                          </option>
-                        ))}
+                        {renderHeaderOptions(file.availableHeaders)}
                       </select>
                     </label>
 

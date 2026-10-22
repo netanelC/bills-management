@@ -51,17 +51,21 @@ export interface CategorySettingsSectionProps {
       sortOrder?: number;
     },
   ) => Promise<void>;
+  onDeleteCategory: (id: string) => Promise<void>;
 }
 
 export function CategorySettingsSection({
   categories,
   onCreateCategory,
   onUpdateCategory,
+  onDeleteCategory,
 }: CategorySettingsSectionProps): React.ReactElement {
   const [newCategoryForm, setNewCategoryForm] = useState<CategoryFormState>(
     INITIAL_CATEGORY_FORM,
   );
-  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null,
+  );
   const [editCategoryForm, setEditCategoryForm] = useState<CategoryFormState>(
     INITIAL_CATEGORY_FORM,
   );
@@ -79,7 +83,7 @@ export function CategorySettingsSection({
   }
 
   function startEdit(cat: CategoryDto): void {
-    setEditingCatId(cat.id);
+    setEditingCategoryId(cat.id);
     setEditCategoryForm({
       name: cat.name,
       spendingNature: cat.spendingNature,
@@ -100,7 +104,7 @@ export function CategorySettingsSection({
       budgetTargetIls,
       sortOrder: Number.isNaN(parsedOrder) ? undefined : parsedOrder,
     });
-    setEditingCatId(null);
+    setEditingCategoryId(null);
   }
 
   return (
@@ -154,7 +158,7 @@ export function CategorySettingsSection({
         />
         <input
           type="number"
-          min="0"
+          min="1"
           step="any"
           placeholder="יעד תקציב חודשי (₪ - אופציונלי)"
           aria-label="יעד תקציב חודשי לקטגוריה חדשה"
@@ -204,7 +208,7 @@ export function CategorySettingsSection({
 
               <div className="divide-y divide-slate-100">
                 {groupCategories.map((cat) => {
-                  const isEditing = editingCatId === cat.id;
+                  const isEditing = editingCategoryId === cat.id;
 
                   return (
                     <div
@@ -258,7 +262,7 @@ export function CategorySettingsSection({
                           />
                           <input
                             type="number"
-                            min="0"
+                            min="1"
                             step="any"
                             placeholder="יעד תקציב (₪)"
                             aria-label="ערוך יעד תקציב"
@@ -292,7 +296,7 @@ export function CategorySettingsSection({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setEditingCatId(null)}
+                            onClick={() => setEditingCategoryId(null)}
                             className="rounded-md bg-slate-200 px-3 py-1 text-xs text-slate-700"
                           >
                             ביטול
@@ -323,6 +327,14 @@ export function CategorySettingsSection({
                               className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                             >
                               ערוך
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`מחק קטגוריה ${cat.name}`}
+                              onClick={() => void onDeleteCategory(cat.id)}
+                              className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            >
+                              מחק
                             </button>
                           </div>
                         </>

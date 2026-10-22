@@ -131,9 +131,11 @@ export function CardSettingsSection({
           }
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
         >
-          <option value="ISRACARD">ישראכרט</option>
-          <option value="AMEX">אמריקן אקספרס</option>
-          <option value="OTHER">אחר</option>
+          {Object.entries(PROVIDER_LABELS).map(([provider, label]) => (
+            <option key={provider} value={provider}>
+              {label}
+            </option>
+          ))}
         </select>
         <select
           aria-label="מחזיק כרטיס לכרטיס חדש"
@@ -168,7 +170,9 @@ export function CardSettingsSection({
           </p>
         ) : (
           cards.map((card) => {
-            const owner = cardholders.find((ch) => ch.id === card.cardholderId);
+            const cardholder = cardholders.find(
+              (ch) => ch.id === card.cardholderId,
+            );
             const isEditing = editingCardId === card.id;
 
             return (
@@ -215,9 +219,11 @@ export function CardSettingsSection({
                       }
                       className="rounded-md border border-slate-300 px-2 py-1 text-sm"
                     >
-                      <option value="ISRACARD">ישראכרט</option>
-                      <option value="AMEX">אמריקן אקספרס</option>
-                      <option value="OTHER">אחר</option>
+                      {Object.entries(PROVIDER_LABELS).map(([provider, label]) => (
+                        <option key={provider} value={provider}>
+                          {label}
+                        </option>
+                      ))}
                     </select>
                     <select
                       aria-label="ערוך מחזיק כרטיס"
@@ -264,7 +270,7 @@ export function CardSettingsSection({
                         {PROVIDER_LABELS[card.provider]}
                       </span>
                       <span className="text-xs text-slate-500">
-                        מחזיק: {owner?.name ?? 'לא ידוע'}
+                        מחזיק כרטיס: {cardholder?.name ?? 'לא ידוע'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

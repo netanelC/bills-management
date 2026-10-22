@@ -110,6 +110,10 @@ function setupDefaultFetchMocks(createdCardId: string): void {
       );
     }
 
+    if (url.startsWith('/api/categories/') && method === 'DELETE') {
+      return createJsonResponse({ success: true }, 200);
+    }
+
     return createJsonResponse({}, 200);
   });
 }
@@ -173,21 +177,21 @@ describe('HouseholdSettings Component', () => {
     );
   });
 
-  it('creates a new Category with budget target 0 when submitted', async () => {
+  it('creates a new Category with positive budget target when submitted', async () => {
     // Arrange
     setupDefaultFetchMocks(faker.string.uuid());
     render(<HouseholdSettings />);
     await waitFor(() => {
       expect(screen.getByLabelText('שם קטגוריה חדשה')).toBeInTheDocument();
     });
-    const categoryName = 'בדיקת יעד אפס';
+    const categoryName = 'בדיקת יעד תקציב';
 
     fireEvent.change(screen.getByLabelText('שם קטגוריה חדשה'), {
       target: { value: categoryName },
     });
     fireEvent.change(
       screen.getByLabelText('יעד תקציב חודשי לקטגוריה חדשה'),
-      { target: { value: '0' } },
+      { target: { value: '1500' } },
     );
 
     // Act
@@ -197,6 +201,25 @@ describe('HouseholdSettings Component', () => {
     await waitFor(() => {
       expect(screen.getByText(categoryName)).toBeInTheDocument();
     });
-    expect(screen.getByText('יעד חודשי: ₪0')).toBeInTheDocument();
+    expect(screen.getByText('יעד חודשי: ₪1,500')).toBeInTheDocument();
+  });
+
+  it('deletes a Category when delete button is clicked', async () => {
+    // Arrange
+    setupDefaultFetchMocks(faker.string.uuid());
+    render(<HouseholdSettings />);
+    await waitFor(() => {
+      expect(screen.getByText('חשבונות ודיור')).toBeInTheDocument();
+    });
+
+    // Act
+    fireEvent.click(
+      screen.getByRole('button', { name: 'מחק קטגוריה חשבונות ודיור' }),
+    );
+
+    // Assert
+    await waitFor(() => {
+      expect(screen.queryByText('חשבונות ודיור')).not.toBeInTheDocument();
+    });
   });
 });
