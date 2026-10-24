@@ -203,7 +203,10 @@ export function parseInstallmentRemarks(
 }
 
 function normalizeQuoteChars(text: string): string {
-  return text.replace(/[״"]/g, '"').replace(/[׳']/g, "'");
+  return text
+    .replace(/[\u200E\u200F\u202A-\u202E\uFEFF]/g, '')
+    .replace(/[״"]/g, '"')
+    .replace(/[׳']/g, "'");
 }
 
 function isSummaryOrIgnoredRow(row: readonly string[]): boolean {
@@ -371,14 +374,14 @@ function detectMetadataFromRows(
         /אמריקן\s*אקספרס|אמקס|american\s*express|\bamex\b/iu.test(rowJoined)
       ) {
         provider = 'AMEX';
-      } else if (/ישראכרט|isracard|מאסטרקארד|mastercard/iu.test(rowJoined)) {
+      } else if (/ישראכרט|isracard|מ[א]?סטרקארד|mastercard/iu.test(rowJoined)) {
         provider = 'ISRACARD';
       }
     }
 
     if (!lastFour) {
       const cardPatterns = [
-        /(?:כרטיס(?:\s+אשראי)?(?:\s+מס(?:'|פר))?|מספר\s+כרטיס|מסתיים\s+ב-?|המסתיים\s+ב-?|ישראכרט|אמריקן\s+אקספרס|אמקס|מאסטרקארד|ויזה|amex|isracard)[^0-9]{0,20}(?:\*{2,4}|x{2,4}|-|\s)*(\d{4})(?!\d)/iu,
+        /(?:כרטיס(?:\s+אשראי)?(?:\s+מס(?:'|פר))?|מספר\s+כרטיס|מסתיים\s+ב-?|המסתיים\s+ב-?|ישראכרט|אמריקן\s+אקספרס|אמקס|מ[א]?סטרקארד|ויזה|גולד|פלטינה|זהב|בינלאומי|עסקי|amex|isracard)[^0-9]{0,30}(?:\*{2,4}|x{2,4}|-|\s)*(\d{4})(?!\d)/iu,
         /(?:\*{4}|x{4})[- ]?(\d{4})(?!\d)/iu,
       ];
       for (const pattern of cardPatterns) {
@@ -392,7 +395,7 @@ function detectMetadataFromRows(
       if (!lastFour) {
         for (let c = 0; c < row.length - 1; c += 1) {
           const cell = normalizeQuoteChars(row[c] ?? '').trim();
-          const nextCell = (row[c + 1] ?? '').trim();
+          const nextCell = normalizeQuoteChars(row[c + 1] ?? '').trim();
           if (
             /(?:כרטיס|מספר כרטיס)/u.test(cell) &&
             /^\d{4}$/.test(nextCell)
@@ -432,11 +435,16 @@ function detectMetadataFromRows(
       }
     }
     if (!lastFour) {
-      const fileCardMatch = /(?:card|כרטיס|[_-])(\d{4})(?:[_.-]|$)/iu.exec(
-        filename,
+      const matches = Array.from(
+        filename.matchAll(/(?:^|[_\s.-])(\d{4})(?:[_\s.-]|$)/g),
+      ).map((m) => m[1]);
+      const nonYearCandidate = matches.find(
+        (digits) => digits !== undefined && !/^20[2-3]\d$/.test(digits),
       );
-      if (fileCardMatch?.[1]) {
-        lastFour = fileCardMatch[1];
+      if (nonYearCandidate) {
+        lastFour = nonYearCandidate;
+      } else if (matches[0]) {
+        lastFour = matches[0];
       }
     }
     if (!billingMonth) {

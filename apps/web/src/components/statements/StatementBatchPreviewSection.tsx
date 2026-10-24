@@ -1,5 +1,6 @@
 import React from 'react';
 import type {
+  CardDto,
   CardholderDto,
   CardProvider,
   ColumnMappingOverrideDto,
@@ -31,6 +32,7 @@ function renderHeaderOptions(availableHeaders: readonly string[]) {
 
 interface StatementBatchPreviewSectionProps {
   previewFiles: StatementPreviewFileItemDto[];
+  cards: CardDto[];
   cardholders: CardholderDto[];
   onboardingByLastFour: Record<string, CardOnboardingDraft>;
   manualLastFourByFile: Record<string, string>;
@@ -53,6 +55,7 @@ interface StatementBatchPreviewSectionProps {
 
 export function StatementBatchPreviewSection({
   previewFiles,
+  cards,
   cardholders,
   onboardingByLastFour,
   manualLastFourByFile,
@@ -66,12 +69,32 @@ export function StatementBatchPreviewSection({
   onCancel,
   onCommit,
 }: StatementBatchPreviewSectionProps): React.ReactElement {
+  const isCardRecognized = (
+    lastFour: string,
+    fileExistingCard?: CardDto | null,
+  ): boolean => {
+    if (fileExistingCard) return true;
+    if (cards.some((c) => c.lastFourDigits === lastFour)) return true;
+    return false;
+  };
+
   const unrecognizedCards = Array.from(
     new Set(
       previewFiles
-        .filter((f) => !f.existingCard)
-        .map((f) => f.detectedLastFour ?? manualLastFourByFile[f.filename] ?? '')
-        .filter((digits) => digits.length === 4),
+        .filter((f) => {
+          const lastFour = (
+            f.detectedLastFour ??
+            manualLastFourByFile[f.filename] ??
+            ''
+          ).trim();
+          return (
+            lastFour.length === 4 &&
+            !isCardRecognized(lastFour, f.existingCard)
+          );
+        })
+        .map((f) =>
+          (f.detectedLastFour ?? manualLastFourByFile[f.filename] ?? '').trim(),
+        ),
     ),
   );
 
@@ -168,8 +191,14 @@ export function StatementBatchPreviewSection({
 
       <div className="space-y-4">
         {previewFiles.map((file) => {
-          const lastFour =
-            file.detectedLastFour ?? manualLastFourByFile[file.filename] ?? '';
+          const lastFour = (
+            file.detectedLastFour ??
+            manualLastFourByFile[file.filename] ??
+            ''
+          ).trim();
+          const resolvedCard =
+            file.existingCard ??
+            cards.find((c) => c.lastFourDigits === lastFour);
           const mapping = columnMappingsByFile[file.filename] ?? {
             purchaseDateIndex: 0,
             rawMerchantNameIndex: 1,
@@ -187,9 +216,19 @@ export function StatementBatchPreviewSection({
                     {file.filename}
                   </span>
                   <span className="mr-2 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                    {file.detectedProvider} •{' '}
+                    {resolvedCard?.provider ?? file.detectedProvider} •{' '}
                     {lastFour ? `•••• ${lastFour}` : 'ללא זיהוי כרטיס'}
+                    {resolvedCard ? ` (${resolvedCard.nickname})` : ''}
                   </span>
+                  {resolvedCard ? (
+                    <span className="mr-2 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-600/20">
+                      ✓ כרטיס קיים
+                    </span>
+                  ) : lastFour.length === 4 ? (
+                    <span className="mr-2 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-600/20">
+                      כרטיס חדש לשיוך
+                    </span>
+                  ) : null}
                   <span className="mr-2 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
                     חודש חיוב: {file.detectedBillingMonth ?? 'לא זוהה'}
                   </span>
@@ -197,7 +236,7 @@ export function StatementBatchPreviewSection({
                     מחזיק כרטיס:{' '}
                     {(() => {
                       const chId =
-                        file.existingCard?.cardholderId ??
+                        resolvedCard?.cardholderId ??
                         onboardingByLastFour[lastFour]?.cardholderId;
                       return (
                         (chId &&

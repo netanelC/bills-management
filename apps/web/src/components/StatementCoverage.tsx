@@ -172,18 +172,23 @@ export function StatementCoverage(): React.ReactElement {
       setPreviewFiles(parsed.files);
 
       const defaultCardholderId = cardholders[0]?.id ?? 'cardholder-primary';
+      const knownCards = coverage?.cards.map((c) => c.card) ?? [];
       const nextOnboarding: Record<string, CardOnboardingDraft> = {
         ...onboardingByLastFour,
       };
 
       for (const file of parsed.files) {
-        if (!file.existingCard && file.detectedLastFour) {
-          if (!nextOnboarding[file.detectedLastFour]) {
-            nextOnboarding[file.detectedLastFour] = {
+        const lastFour = file.detectedLastFour;
+        const alreadyExists =
+          file.existingCard ||
+          (lastFour && knownCards.some((c) => c.lastFourDigits === lastFour));
+        if (!alreadyExists && lastFour) {
+          if (!nextOnboarding[lastFour]) {
+            nextOnboarding[lastFour] = {
               cardholderId: defaultCardholderId,
               nickname: buildDefaultCardNickname(
                 file.detectedProvider,
-                file.detectedLastFour,
+                lastFour,
               ),
               provider: file.detectedProvider,
             };
@@ -261,6 +266,7 @@ export function StatementCoverage(): React.ReactElement {
     try {
       setErrorMessage(null);
       const defaultCardholderId = cardholders[0]?.id ?? 'cardholder-primary';
+      const knownCards = coverage?.cards.map((c) => c.card) ?? [];
 
       const commitFiles = previewFiles.map((file) => {
         const cardLastFour = (
@@ -272,8 +278,12 @@ export function StatementCoverage(): React.ReactElement {
           manualMonthByFile[file.filename] ??
           '2026-01') as BillingMonth;
 
+        const resolvedExistingCard =
+          file.existingCard ??
+          knownCards.find((c) => c.lastFourDigits === cardLastFour);
+
         const draft = onboardingByLastFour[cardLastFour];
-        const newCardOnboarding = !file.existingCard
+        const newCardOnboarding = !resolvedExistingCard
           ? {
               cardholderId: draft?.cardholderId ?? defaultCardholderId,
               nickname:
@@ -423,6 +433,7 @@ export function StatementCoverage(): React.ReactElement {
         {previewFiles.length > 0 ? (
           <StatementBatchPreviewSection
             previewFiles={previewFiles}
+            cards={coverage?.cards.map((c) => c.card) ?? []}
             cardholders={cardholders}
             onboardingByLastFour={onboardingByLastFour}
             manualLastFourByFile={manualLastFourByFile}
