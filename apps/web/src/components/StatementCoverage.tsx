@@ -341,14 +341,26 @@ export function StatementCoverage(): React.ReactElement {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">
-          מטריצת כיסוי דפי פירוט וייבוא קבצים (Statement Coverage)
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          העלאה מרוכזת של דפי פירוט ישראכרט ואמריקן אקספרס (.xls, .xlsx, .csv),
-          שיוך כרטיסים חדשים ומעקב אחר שלמות דפי הפירוט החודשיים
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-purple-100 px-2.5 py-1 text-xs font-bold text-purple-800">
+            🟣 שלב 2
+          </span>
+          <h2 className="text-lg font-semibold text-slate-900">
+            קליטת דפי פירוט וכיסוי
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+            חודשי חיוב במערכת: <strong className="text-slate-900">{coverage?.billingMonths.length ?? 0}</strong>
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+            כרטיסים במעקב: <strong className="text-slate-900">{coverage?.cards.length ?? 0}</strong>
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+            עסקאות שנטענו: <strong className="text-slate-900">{transactions.length}</strong>
+          </span>
+        </div>
       </div>
 
       {errorMessage ? (

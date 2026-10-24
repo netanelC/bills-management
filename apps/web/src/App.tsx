@@ -5,40 +5,59 @@ import { MonthlyDashboard } from './components/MonthlyDashboard.js';
 import { StatementCoverage } from './components/StatementCoverage.js';
 import { UncategorizedInbox } from './components/UncategorizedInbox.js';
 
-type WorkflowTab = 'dashboard' | 'inbox' | 'coverage' | 'settings';
+type WorkflowTab = 'settings' | 'coverage' | 'inbox' | 'dashboard';
 
 interface NavItem {
   id: WorkflowTab;
+  step: number;
   label: string;
-  heading: string;
-  subtitle: string;
+  guideLabel: string;
+  shortDesc: string;
+  badgeClass: string;
+  activeBorder: string;
+  activeText: string;
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
   {
-    id: 'dashboard',
-    label: 'דשבורד חודשי',
-    heading: 'דשבורד ניתוח חודשי (Billing Month)',
-    subtitle: 'ניתוח הוצאות לפי חודש חיוב (Billing Month)',
-  },
-  {
-    id: 'inbox',
-    label: 'תיבת סיווג',
-    heading: 'תיבת סיווג מהיר (Uncategorized Inbox)',
-    subtitle: 'בתי עסק חדשים ועסקאות מעורבות (Uncategorized Inbox)',
+    id: 'settings',
+    step: 1,
+    label: 'הגדרות משק בית',
+    guideLabel: 'הגדרות',
+    shortDesc: 'בני הזוג והכרטיסים',
+    badgeClass: 'bg-blue-100 text-blue-800',
+    activeBorder: 'border-blue-600',
+    activeText: 'text-blue-700 font-bold',
   },
   {
     id: 'coverage',
+    step: 2,
     label: 'כיסוי דפי פירוט',
-    heading: 'מטריצת כיסוי דפי פירוט (Statement Coverage)',
-    subtitle: 'העלאת קובצי ישראכרט/אמקס ומטריצת כרטיסים (Statement Coverage)',
+    guideLabel: 'קליטה וכיסוי',
+    shortDesc: 'העלאה ובדיקת חוסרים',
+    badgeClass: 'bg-purple-100 text-purple-800',
+    activeBorder: 'border-purple-600',
+    activeText: 'text-purple-700 font-bold',
   },
   {
-    id: 'settings',
-    label: 'הגדרות משק בית',
-    heading: 'הגדרות משק בית (Household Settings)',
-    subtitle:
-      'מחזיקי כרטיס, כרטיסים וקטגוריות (Cardholders, Cards & Categories)',
+    id: 'inbox',
+    step: 3,
+    label: 'תיבת סיווג',
+    guideLabel: 'סיווג עסקאות',
+    shortDesc: 'עסקים חדשים ו-Bit',
+    badgeClass: 'bg-amber-100 text-amber-800',
+    activeBorder: 'border-amber-500',
+    activeText: 'text-amber-700 font-bold',
+  },
+  {
+    id: 'dashboard',
+    step: 4,
+    label: 'דשבורד חודשי',
+    guideLabel: 'דשבורד הוצאות',
+    shortDesc: 'תקציב, ניתוח ותובנות',
+    badgeClass: 'bg-emerald-100 text-emerald-800',
+    activeBorder: 'border-emerald-600',
+    activeText: 'text-emerald-700 font-bold',
   },
 ];
 
@@ -78,14 +97,19 @@ export function App(): React.ReactElement {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white shadow-xs">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              מערכת ניתוח הוצאות אשראי
-            </h1>
-            <p className="text-sm text-slate-500">
-              ריכוז וניתוח חודשי של פירוטי ישראכרט ואמריקן אקספרס למשק הבית
-            </p>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-lg font-black text-white shadow-xs">
+              ₪
+            </span>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">
+                ניהול הוצאות משק בית
+              </h1>
+              <p className="text-xs text-slate-500">
+                קליטת פירוטי ישראכרט ואמקס • סיווג מהיר • מעקב תקציב
+              </p>
+            </div>
           </div>
 
           <div
@@ -115,6 +139,42 @@ export function App(): React.ReactElement {
           </div>
         </div>
 
+        {/* 🧭 Visual Workflow Orientation Bar */}
+        <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-2">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-slate-500">
+              🧭 מדריך התמצאות לפי שלבים:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs">
+              {NAV_ITEMS.map((item, idx) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <React.Fragment key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(item.id)}
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all ${
+                        isActive
+                          ? `${item.badgeClass} font-bold shadow-2xs ring-2 ring-indigo-500/20`
+                          : 'bg-white text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/90 text-[10px] font-black">
+                        {item.step}
+                      </span>
+                      <span>{item.guideLabel}</span>
+                    </button>
+                    {idx < NAV_ITEMS.length - 1 ? (
+                      <span className="text-slate-300 font-bold">←</span>
+                    ) : null}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Tabs Navigation */}
         <nav
           aria-label="ניווט ראשי"
           className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-6"
@@ -126,20 +186,25 @@ export function App(): React.ReactElement {
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors ${
                   isSelected
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? `${item.activeBorder} ${item.activeText}`
                     : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
-                {item.label}
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${item.badgeClass}`}
+                >
+                  שלב {item.step}
+                </span>
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-6 py-6">
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
           {activeTab === 'settings' ? (
             <HouseholdSettings />
@@ -155,5 +220,3 @@ export function App(): React.ReactElement {
     </div>
   );
 }
-
-

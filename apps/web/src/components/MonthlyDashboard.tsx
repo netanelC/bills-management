@@ -219,26 +219,37 @@ export function MonthlyDashboard(): React.ReactElement {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
+            🟢 שלב 4
+          </span>
           <h2 className="text-lg font-semibold text-slate-900">
-            דשבורד ניתוח חודשי (Billing Month)
+            דשבורד חודשי
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            ניתוח הוצאות נטו בש&quot;ח לפי חודש חיוב, מעקב יעדי תקציב (Budget
-            Target) וחקירת עסקאות אינטראקטיבית
-          </p>
         </div>
 
-        {hasActiveSliceFilter ? (
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-          >
-            נקה סינונים פעילים
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {hasActiveSliceFilter ? (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              נקה סינונים פעילים
+            </button>
+          ) : null}
+          {analytics ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                חודש חיוב: <strong className="text-slate-900">{analytics.selectedBillingMonth ?? '—'}</strong>
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-800 ring-1 ring-emerald-600/20">
+                סה&quot;כ הוצאה: <strong className="text-emerald-900">₪{analytics.totalNetSpendIls.toLocaleString('he-IL')}</strong>
+              </span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Global Filter Controls */}
