@@ -199,4 +199,25 @@ describe('HouseholdSettings Component', () => {
     });
     expect(screen.getByText('יעד חודשי: ₪1,500')).toBeInTheDocument();
   });
+
+  it('deletes a Category when confirmed via delete button', async () => {
+    // Arrange
+    setupDefaultFetchMocks(faker.string.uuid());
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<HouseholdSettings />);
+    await waitFor(() => {
+      expect(screen.getByText('חשבונות ודיור')).toBeInTheDocument();
+    });
+
+    // Act
+    fireEvent.click(
+      screen.getByRole('button', { name: 'מחק קטגוריה חשבונות ודיור' }),
+    );
+
+    // Assert
+    await waitFor(() => {
+      expect(screen.queryByText('חשבונות ודיור')).not.toBeInTheDocument();
+    });
+    expect(window.confirm).toHaveBeenCalled();
+  });
 });

@@ -49,7 +49,7 @@ A raw merchant string or substring rule from a Statement that resolves automatic
 _Avoid_: Mapping, nickname, raw vendor
 
 **Category**:
-A household-defined spending classification (e.g., "קניות", "פינוקים") belonging to a Spending Nature, optionally carrying a monthly Budget Target, and applied to Transactions via their Merchant's default or a Category Override.
+A household-defined spending classification (e.g., "קניות", "פינוקים") belonging to a Spending Nature, optionally carrying a monthly Budget Target, and applied to Transactions via their Merchant's default or a Category Override. Deleting a Category unbinds its associated Merchants and Transaction overrides, returning them to an uncategorized state.
 _Avoid_: Tag, type, bucket, label
 
 **Category Override**:

@@ -42,12 +42,14 @@ export interface CategorySettingsSectionProps {
   categories: CategoryDto[];
   onCreateCategory: (input: CreateCategoryInput) => Promise<void>;
   onUpdateCategory: (id: string, input: UpdateCategoryInput) => Promise<void>;
+  onDeleteCategory: (id: string) => Promise<void>;
 }
 
 export function CategorySettingsSection({
   categories,
   onCreateCategory,
   onUpdateCategory,
+  onDeleteCategory,
 }: CategorySettingsSectionProps): React.ReactElement {
   const [newCategoryForm, setNewCategoryForm] = useState<CategoryFormState>(
     INITIAL_CATEGORY_FORM,
@@ -318,6 +320,21 @@ export function CategorySettingsSection({
                               className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
                             >
                               ערוך
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`מחק קטגוריה ${cat.name}`}
+                              onClick={() => {
+                                const confirmed = window.confirm(
+                                  `האם אתה בטוח שברצונך למחוק את הקטגוריה "${cat.name}"? בתי עסק ועסקאות המשויכים אליה יעברו לסטטוס "ללא קטגוריה".`,
+                                );
+                                if (confirmed) {
+                                  void onDeleteCategory(cat.id);
+                                }
+                              }}
+                              className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            >
+                              מחק
                             </button>
                           </div>
                         </>
