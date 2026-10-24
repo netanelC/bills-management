@@ -10,7 +10,8 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:reset": "node packages/db/dist/reset.js"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
