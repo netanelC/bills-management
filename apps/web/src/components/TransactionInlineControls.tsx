@@ -40,9 +40,13 @@ export function TransactionInlineControls({
   const [search, setSearch] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const selectedCategoryId = transaction.categoryOverrideId;
-  const currentCategory = categories.find((c) => c.id === selectedCategoryId);
-  const isOverridden = Boolean(selectedCategoryId);
+  // Match category by override ID, or fallback to effectiveCategoryId or effectiveCategoryName
+  const activeCategoryId =
+    transaction.categoryOverrideId ?? transaction.effectiveCategoryId;
+  const currentCategory =
+    categories.find((c) => c.id === activeCategoryId) ??
+    categories.find((c) => c.name === transaction.effectiveCategoryName);
+  const isOverridden = Boolean(transaction.categoryOverrideId);
 
   // Close popover when clicking outside or pressing Escape
   useEffect(() => {
@@ -108,34 +112,46 @@ export function TransactionInlineControls({
         ))}
       </select>
 
-      {/* Interactive Chip / Badge Button */}
+      {/* Interactive Chip / Badge Button styled with the category's unique color */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold shadow-2xs transition-all ${
-          isOverridden
-            ? 'bg-indigo-50 text-indigo-900 ring-1 ring-indigo-400/50 hover:bg-indigo-100'
-            : currentCategory
-              ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200'
-              : 'bg-amber-50 text-amber-800 ring-1 ring-amber-300/60 hover:bg-amber-100'
+        style={
+          currentCategory
+            ? {
+                backgroundColor: `${currentCategory.color}15`,
+                borderColor: `${currentCategory.color}45`,
+                color: currentCategory.color,
+              }
+            : undefined
+        }
+        className={`group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold shadow-2xs border transition-all ${
+          !currentCategory
+            ? 'bg-amber-50 text-amber-800 border-amber-300/60 hover:bg-amber-100'
+            : 'hover:brightness-95'
         }`}
         title="לחץ לשינוי סיווג קטגוריה"
       >
         <span
-          className="h-2 w-2 rounded-full shrink-0"
+          className="h-2 w-2 rounded-full shrink-0 shadow-2xs"
           style={{
-            backgroundColor:
-              currentCategory?.color ??
-              (isOverridden ? '#6366f1' : '#f59e0b'),
+            backgroundColor: currentCategory?.color ?? '#f59e0b',
           }}
         />
-        <span className="truncate max-w-[130px]">
+        <span className="truncate max-w-[130px] font-bold">
           {currentCategory?.name ??
-            (isOverridden
-              ? 'דריסת קטגוריה'
-              : transaction.effectiveCategoryName || 'ללא סיווג')}
+            transaction.effectiveCategoryName ??
+            'ללא סיווג'}
         </span>
-        <span className="text-[10px] text-slate-400 group-hover:text-slate-600">
+        {isOverridden ? (
+          <span
+            className="rounded bg-indigo-100 px-1 text-[10px] font-normal text-indigo-700"
+            title="דריסה ידנית"
+          >
+            ידני
+          </span>
+        ) : null}
+        <span className="text-[10px] opacity-60 group-hover:opacity-100">
           ▾
         </span>
       </button>
@@ -174,7 +190,9 @@ export function TransactionInlineControls({
             <div className="border-t border-slate-100 my-1" />
 
             {filteredCategories.map((cat) => {
-              const isSelected = selectedCategoryId === cat.id;
+              const isSelected =
+                (transaction.categoryOverrideId ??
+                  transaction.effectiveCategoryId) === cat.id;
               return (
                 <button
                   key={cat.id}
@@ -188,7 +206,7 @@ export function TransactionInlineControls({
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs"
                       style={{ backgroundColor: cat.color }}
                     />
                     <span className="truncate">{cat.name}</span>
