@@ -631,16 +631,16 @@ export function StatementCoverage(): React.ReactElement {
                   בית עסק
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  כרטיס
-                </th>
-                <th className="px-4 py-2.5 font-semibold text-slate-700">
                   קטגוריה
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  תשלומים / מט&quot;ח
+                  סכום
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  סכום חיוב בש&quot;ח
+                  תשלומים
+                </th>
+                <th className="px-4 py-2.5 font-semibold text-slate-700">
+                  כרטיס
                 </th>
               </tr>
             </thead>
@@ -658,10 +658,6 @@ export function StatementCoverage(): React.ReactElement {
                       </div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-slate-600">
-                    {tx.cardNickname} ({tx.cardLastFourDigits}) •{' '}
-                    {tx.cardholderName}
-                  </td>
                   <td className="px-4 py-2.5 text-xs">
                     <TransactionInlineControls
                       transaction={tx}
@@ -674,20 +670,26 @@ export function StatementCoverage(): React.ReactElement {
                       onUpdate={handleUpdateTransaction}
                     />
                   </td>
+                  <td className="px-4 py-2.5 font-semibold">
+                    <Money amount={tx.billedAmountIls} colored />
+                  </td>
                   <td className="px-4 py-2.5 text-xs text-slate-600">
                     {tx.installmentCurrent && tx.installmentTotal ? (
-                      <span className="ml-2 inline-flex rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">
+                      <span className="inline-flex rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">
                         תשלום {tx.installmentCurrent} מתוך {tx.installmentTotal}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                     {tx.originalCurrency !== 'ILS' ? (
-                      <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
+                      <span className="mr-1.5 inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
                         {tx.originalAmount} {tx.originalCurrency}
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-2.5 font-semibold">
-                    <Money amount={tx.billedAmountIls} colored />
+                  <td className="px-4 py-2.5 text-xs text-slate-600">
+                    {tx.cardNickname} ({tx.cardLastFourDigits}) •{' '}
+                    {tx.cardholderName}
                   </td>
                 </tr>
               ))}

@@ -965,13 +965,16 @@ export function MonthlyDashboard(): React.ReactElement {
                       בית עסק
                     </th>
                     <th className="px-4 py-3 font-bold text-slate-700 text-xs">
-                      כרטיס ומחזיק
-                    </th>
-                    <th className="px-4 py-3 font-bold text-slate-700 text-xs">
                       קטגוריה
                     </th>
                     <th className="px-4 py-3 font-bold text-slate-700 text-xs">
-                      סכום חיוב בש&quot;ח
+                      סכום
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-700 text-xs">
+                      תשלומים
+                    </th>
+                    <th className="px-4 py-3 font-bold text-slate-700 text-xs">
+                      כרטיס
                     </th>
                   </tr>
                 </thead>
@@ -994,10 +997,6 @@ export function MonthlyDashboard(): React.ReactElement {
                           </div>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-600">
-                        {tx.cardNickname} ({tx.cardLastFourDigits}) •{' '}
-                        {tx.cardholderName}
-                      </td>
                       <td className="px-4 py-3 text-xs">
                         <TransactionInlineControls
                           transaction={tx}
@@ -1013,12 +1012,30 @@ export function MonthlyDashboard(): React.ReactElement {
                       <td className="px-4 py-3 font-semibold text-xs">
                         <Money amount={tx.billedAmountIls} colored />
                       </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {tx.installmentCurrent && tx.installmentTotal ? (
+                          <span className="inline-flex rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">
+                            תשלום {tx.installmentCurrent} מתוך {tx.installmentTotal}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                        {tx.originalCurrency !== 'ILS' ? (
+                          <span className="mr-1.5 inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
+                            {tx.originalAmount} {tx.originalCurrency}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {tx.cardNickname} ({tx.cardLastFourDigits}) •{' '}
+                        {tx.cardholderName}
+                      </td>
                     </tr>
                   ))}
                   {transactions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-4 py-8 text-center text-xs text-slate-400"
                       >
                         אין עסקאות התואמות לסינון הנוכחי.
