@@ -8,6 +8,7 @@ import {
   type MerchantAliasMatchType,
   type MerchantDto,
 } from '@bills/shared';
+import { Money } from '../utils/format.js';
 
 interface AliasDraft {
   pattern: string;
@@ -112,7 +113,7 @@ export function UncategorizedInbox(): React.ReactElement {
         ...prev,
         [merchantId]: { pattern: '', matchType: 'CONTAINS' },
       }));
-      setStatusMessage('כלל הזיהוי (Merchant Alias) נוסף בהצלחה');
+      setStatusMessage('כלל הזיהוי נוסף בהצלחה');
       await loadInboxData();
     } catch {
       setErrorMessage('שגיאה בהוספת כלל זיהוי לבית העסק');
@@ -125,13 +126,13 @@ export function UncategorizedInbox(): React.ReactElement {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
-            🟠 שלב 3
+          <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">
+            שלב 3
           </span>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">
             תיבת סיווג מהיר
           </h2>
         </div>
@@ -141,10 +142,10 @@ export function UncategorizedInbox(): React.ReactElement {
             בתי עסק ללא קטגוריה: <strong className="text-slate-900">{uncategorizedList.length}</strong>
           </span>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-900 ring-1 ring-amber-600/20">
-            <span>סה&quot;כ ממתינים לסיווג:</span>
+            <span>ממתינים לסיווג:</span>
             <span
               data-testid="inbox-badge-count"
-              className="rounded-full bg-amber-600 px-2 py-0.5 text-white"
+              className="rounded-full bg-amber-600 px-2 py-0.5 text-white font-bold"
             >
               {uncategorizedList.length}
             </span>
@@ -153,7 +154,7 @@ export function UncategorizedInbox(): React.ReactElement {
       </div>
 
       {loading && !inbox ? (
-        <div className="py-4 text-sm text-slate-500">
+        <div className="py-6 text-center text-sm text-slate-500">
           טוען תיבת סיווג ובתי עסק...
         </div>
       ) : null}
@@ -161,7 +162,7 @@ export function UncategorizedInbox(): React.ReactElement {
       {errorMessage ? (
         <div
           role="alert"
-          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-2xs"
         >
           {errorMessage}
         </div>
@@ -170,24 +171,24 @@ export function UncategorizedInbox(): React.ReactElement {
       {statusMessage ? (
         <div
           role="status"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-2xs"
         >
           {statusMessage}
         </div>
       ) : null}
 
       {/* Uncategorized Merchants Section */}
-      <section className="space-y-4">
-        <h3 className="text-base font-semibold text-slate-900">
+      <section className="space-y-3">
+        <h3 className="text-base font-bold text-slate-900">
           בתי עסק הממתינים לשיוך קטגוריה ({uncategorizedList.length})
         </h3>
 
         {uncategorizedList.length === 0 ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-6 text-center text-sm text-emerald-800">
-            כל בתי העסק מסווגים! אין בתי עסק הממתינים לשיוך קטגוריה.
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 text-center text-sm font-semibold text-emerald-800">
+            ✨ כל בתי העסק מסווגים! אין בתי עסק הממתינים לשיוך קטגוריה.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-3">
             {uncategorizedList.map((item) => {
               const { merchant, sampleTransactions } = item;
               const draft = aliasDraftByMerchant[merchant.id] ?? {
@@ -199,34 +200,25 @@ export function UncategorizedInbox(): React.ReactElement {
                 <div
                   key={merchant.id}
                   data-testid={`inbox-merchant-${merchant.id}`}
-                  className="rounded-lg border border-slate-200 bg-slate-50/60 p-4 shadow-2xs"
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-slate-300 transition-colors"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <h4 className="text-base font-bold text-slate-900">
-                        {merchant.canonicalName}
-                      </h4>
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        {item.transactionCount} עסקאות • סה&quot;כ חיוב: ₪
-                        {item.totalBilledIls.toLocaleString('he-IL')}
-                      </p>
-
-                      {merchant.aliases.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {merchant.aliases.map((alias) => (
-                            <span
-                              key={alias.id}
-                              className="rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200"
-                            >
-                              {alias.matchType === 'CONTAINS' ? 'מכיל' : 'מדויק'}
-                              : {alias.pattern}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-bold text-slate-900 truncate">
+                          {merchant.canonicalName}
+                        </h4>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 font-medium">
+                          {item.transactionCount} עסקאות
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-slate-500 flex items-center gap-1.5">
+                        <span>סך הוצאה:</span>
+                        <Money amount={item.totalBilledIls} className="font-bold text-slate-800" />
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <select
                         aria-label={`בחר קטגוריה עבור ${merchant.canonicalName}`}
                         value={merchant.defaultCategoryId ?? ''}
@@ -236,7 +228,7 @@ export function UncategorizedInbox(): React.ReactElement {
                             e.target.value,
                           )
                         }
-                        className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-indigo-500 focus:outline-none"
+                        className="rounded-lg border border-indigo-300 bg-indigo-50/50 px-3 py-1.5 text-xs font-semibold text-indigo-900 shadow-2xs hover:bg-indigo-50 focus:border-indigo-500 focus:outline-none"
                       >
                         <option value="">בחר קטגוריה לשיוך...</option>
                         {categories.map((cat) => (
@@ -248,25 +240,36 @@ export function UncategorizedInbox(): React.ReactElement {
                     </div>
                   </div>
 
-                  {/* Sample Transactions for Context */}
+                  {merchant.aliases.length > 0 ? (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {merchant.aliases.map((alias) => (
+                        <span
+                          key={alias.id}
+                          className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200"
+                        >
+                          כלל: {alias.pattern}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Compact Sample Transactions */}
                   {sampleTransactions.length > 0 ? (
-                    <div className="mt-3 rounded-md border border-slate-200/80 bg-white p-2.5">
-                      <p className="mb-1.5 text-[11px] font-semibold text-slate-500">
-                        עסקאות לדוגמה מתוך הדוחות:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          עסקאות לדוגמה:
+                        </span>
                         {sampleTransactions.map((tx) => (
                           <span
                             key={tx.id}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                            className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-700 shadow-2xs ring-1 ring-slate-200"
                           >
                             <span>{tx.purchaseDate}</span>
                             <span>•</span>
-                            <span className="font-semibold text-slate-900">
-                              ₪{tx.billedAmountIls.toLocaleString('he-IL')}
-                            </span>
+                            <Money amount={tx.billedAmountIls} className="font-semibold text-slate-900" />
                             {tx.cardNickname ? (
-                              <span className="text-[11px] text-slate-500">
+                              <span className="text-slate-400">
                                 ({tx.cardNickname})
                               </span>
                             ) : null}
@@ -276,11 +279,14 @@ export function UncategorizedInbox(): React.ReactElement {
                     </div>
                   ) : null}
 
-                  {/* Add Alias Rule Inline */}
-                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-3">
+                  {/* Human-Readable Rule Generator Template */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5 text-xs text-slate-600">
+                    <span className="font-medium text-slate-700">
+                      קטלג תמיד עסקאות המכילות:
+                    </span>
                     <input
                       type="text"
-                      placeholder="הוסף תבנית זיהוי (למשל: שופרסל)"
+                      placeholder={merchant.canonicalName}
                       aria-label={`תבנית זיהוי עבור ${merchant.canonicalName}`}
                       value={draft.pattern}
                       onChange={(e) =>
@@ -292,7 +298,7 @@ export function UncategorizedInbox(): React.ReactElement {
                           },
                         }))
                       }
-                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs shadow-2xs focus:border-indigo-500 focus:outline-none min-w-[140px]"
                     />
                     <select
                       aria-label={`סוג התאמה עבור ${merchant.canonicalName}`}
@@ -306,17 +312,18 @@ export function UncategorizedInbox(): React.ReactElement {
                           },
                         }))
                       }
-                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
                     >
-                      <option value="CONTAINS">מכיל מחרוזת (CONTAINS)</option>
-                      <option value="EXACT">התאמה מדויקת (EXACT)</option>
+                      <option value="CONTAINS">מכיל</option>
+                      <option value="EXACT">מדויק</option>
                     </select>
                     <button
                       type="button"
+                      aria-label="הוסף כלל זיהוי"
                       onClick={() => void handleAddAlias(merchant.id)}
-                      className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-900"
+                      className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-900 shadow-2xs transition-colors"
                     >
-                      הוסף כלל זיהוי
+                      שמור חוק
                     </button>
                   </div>
                 </div>
@@ -329,31 +336,32 @@ export function UncategorizedInbox(): React.ReactElement {
       {/* Categorized Merchants Directory */}
       {categorizedMerchants.length > 0 ? (
         <section className="space-y-3">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-bold text-slate-900">
             ספריית בתי עסק מסווגים ({categorizedMerchants.length})
           </h3>
-          <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-2xs">
             {categorizedMerchants.map((merchant) => (
               <div
                 key={merchant.id}
                 data-testid={`directory-merchant-${merchant.id}`}
-                className="flex flex-wrap items-center justify-between gap-3 p-3.5 text-xs"
+                className="flex flex-wrap items-center justify-between gap-3 p-3.5 text-xs hover:bg-slate-50/50 transition-colors"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-bold text-slate-900">
                       {merchant.canonicalName}
                     </span>
                     {merchant.defaultCategoryName ? (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
                         {merchant.defaultCategoryName}
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-0.5 text-slate-500">
-                    {merchant.transactionCount} עסקאות • ₪
-                    {merchant.totalBilledIls.toLocaleString('he-IL')}
-                  </p>
+                  <div className="mt-0.5 text-slate-400 flex items-center gap-1.5">
+                    <span>{merchant.transactionCount} עסקאות</span>
+                    <span>•</span>
+                    <Money amount={merchant.totalBilledIls} className="text-slate-700 font-medium" />
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -363,7 +371,7 @@ export function UncategorizedInbox(): React.ReactElement {
                     onChange={(e) =>
                       void handleAssignCategory(merchant.id, e.target.value)
                     }
-                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs"
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs shadow-2xs focus:border-indigo-500 focus:outline-none"
                   >
                     <option value="">ללא קטגוריית ברירת מחדל</option>
                     {categories.map((cat) => (

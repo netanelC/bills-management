@@ -5,59 +5,39 @@ import { MonthlyDashboard } from './components/MonthlyDashboard.js';
 import { StatementCoverage } from './components/StatementCoverage.js';
 import { UncategorizedInbox } from './components/UncategorizedInbox.js';
 
-type WorkflowTab = 'settings' | 'coverage' | 'inbox' | 'dashboard';
+export type WorkflowTab = 'settings' | 'coverage' | 'inbox' | 'dashboard';
 
-interface NavItem {
+interface NavStep {
   id: WorkflowTab;
   step: number;
   label: string;
-  guideLabel: string;
-  shortDesc: string;
-  badgeClass: string;
-  activeBorder: string;
-  activeText: string;
+  description: string;
 }
 
-const NAV_ITEMS: readonly NavItem[] = [
+const STEPS: readonly NavStep[] = [
   {
     id: 'settings',
     step: 1,
-    label: 'הגדרות משק בית',
-    guideLabel: 'הגדרות',
-    shortDesc: 'בני הזוג והכרטיסים',
-    badgeClass: 'bg-blue-100 text-blue-800',
-    activeBorder: 'border-blue-600',
-    activeText: 'text-blue-700 font-bold',
+    label: 'הגדרות',
+    description: 'כרטיסים ומחזיקים',
   },
   {
     id: 'coverage',
     step: 2,
-    label: 'כיסוי דפי פירוט',
-    guideLabel: 'קליטה וכיסוי',
-    shortDesc: 'העלאה ובדיקת חוסרים',
-    badgeClass: 'bg-purple-100 text-purple-800',
-    activeBorder: 'border-purple-600',
-    activeText: 'text-purple-700 font-bold',
+    label: 'קליטה וכיסוי',
+    description: 'העלאת דפי פירוט',
   },
   {
     id: 'inbox',
     step: 3,
     label: 'תיבת סיווג',
-    guideLabel: 'סיווג עסקאות',
-    shortDesc: 'שיוך קטגוריות לבתי עסק',
-    badgeClass: 'bg-amber-100 text-amber-800',
-    activeBorder: 'border-amber-500',
-    activeText: 'text-amber-700 font-bold',
+    description: 'שיוך מהיר וחוקים',
   },
   {
     id: 'dashboard',
     step: 4,
     label: 'דשבורד חודשי',
-    guideLabel: 'דשבורד הוצאות',
-    shortDesc: 'תקציב, ניתוח ותובנות',
-    badgeClass: 'bg-emerald-100 text-emerald-800',
-    activeBorder: 'border-emerald-600',
-    activeText: 'text-emerald-700 font-bold',
+    description: 'מעקב, תקציב וניתוח',
   },
 ];
 
@@ -96,25 +76,27 @@ export function App(): React.ReactElement {
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white shadow-xs">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xs shadow-xs">
+        {/* Top Branding & Status */}
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-lg font-black text-white shadow-xs">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg font-black text-white shadow-sm ring-2 ring-indigo-100">
               ₪
             </span>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">
+              <h1 className="text-base font-bold text-slate-900 tracking-tight">
                 ניהול הוצאות משק בית
               </h1>
               <p className="text-xs text-slate-500">
-                קליטת פירוטי ישראכרט ואמקס • סיווג מהיר • מעקב תקציב
+                קליטת פירוטים • סיווג מהיר • מעקב תקציב
               </p>
             </div>
           </div>
 
+          {/* Elegant Status Indicator */}
           <div
             data-testid="health-indicator"
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold shadow-2xs transition-all ${
               health
                 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
                 : healthError
@@ -122,90 +104,88 @@ export function App(): React.ReactElement {
                   : 'bg-slate-100 text-slate-600'
             }`}
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                health
-                  ? 'bg-emerald-500'
-                  : healthError
-                    ? 'bg-rose-500'
-                    : 'bg-slate-400'
-              }`}
-            />
-            {health
-              ? `מחובר לשרת (${health.tablesInitialized} טבלאות)`
-              : healthError
-                ? 'שגיאת חיבור לשרת'
-                : 'בודק חיבור לשרת...'}
+            <span className="relative flex h-2 w-2">
+              {health && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${
+                  health
+                    ? 'bg-emerald-500'
+                    : healthError
+                      ? 'bg-rose-500'
+                      : 'bg-slate-400'
+                }`}
+              />
+            </span>
+            <span>
+              {health
+                ? 'מסונכרן'
+                : healthError
+                  ? 'שגיאת חיבור לשרת'
+                  : 'בודק סנכרון...'}
+            </span>
           </div>
         </div>
 
-        {/* 🧭 Visual Workflow Orientation Bar */}
-        <div className="border-t border-slate-100 bg-slate-50/70 px-6 py-2">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-slate-500">
-              🧭 מדריך התמצאות לפי שלבים:
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs">
-              {NAV_ITEMS.map((item, idx) => {
+        {/* Single Unified Stepper Navigation Bar (RTL 1 -> 4) */}
+        <nav
+          aria-label="שלבי תהליך"
+          className="border-t border-slate-100 bg-slate-50/60"
+        >
+          <div className="mx-auto flex max-w-7xl overflow-x-auto px-6 py-2">
+            <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
+              {STEPS.map((item, idx) => {
                 const isActive = activeTab === item.id;
                 return (
                   <React.Fragment key={item.id}>
                     <button
                       type="button"
                       onClick={() => setActiveTab(item.id)}
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all ${
+                      className={`group flex flex-1 items-center gap-3 rounded-xl px-3 py-2 text-right transition-all ${
                         isActive
-                          ? `${item.badgeClass} font-bold shadow-2xs ring-2 ring-indigo-500/20`
-                          : 'bg-white text-slate-600 hover:bg-slate-100'
+                          ? 'bg-white shadow-xs ring-1 ring-slate-200/80 border-b-2 border-indigo-600'
+                          : 'hover:bg-white/60 hover:text-slate-900 text-slate-600'
                       }`}
                     >
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/90 text-[10px] font-black">
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black transition-colors ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-200/80 text-slate-600 group-hover:bg-slate-300'
+                        }`}
+                      >
                         {item.step}
                       </span>
-                      <span>{item.guideLabel}</span>
+                      <div className="min-w-0">
+                        <div
+                          className={`text-xs sm:text-sm font-bold truncate ${
+                            isActive ? 'text-indigo-900' : 'text-slate-700'
+                          }`}
+                        >
+                          {item.label}
+                        </div>
+                        <div className="hidden sm:block text-[11px] text-slate-400 truncate">
+                          {item.description}
+                        </div>
+                      </div>
                     </button>
-                    {idx < NAV_ITEMS.length - 1 ? (
-                      <span className="text-slate-300 font-bold">←</span>
-                    ) : null}
+
+                    {idx < STEPS.length - 1 && (
+                      <span className="text-slate-300 select-none font-bold text-sm">
+                        ←
+                      </span>
+                    )}
                   </React.Fragment>
                 );
               })}
             </div>
           </div>
-        </div>
-
-        {/* Main Tabs Navigation */}
-        <nav
-          aria-label="ניווט ראשי"
-          className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-6"
-        >
-          {NAV_ITEMS.map((item) => {
-            const isSelected = item.id === activeTab;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors ${
-                  isSelected
-                    ? `${item.activeBorder} ${item.activeText}`
-                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
-                }`}
-              >
-                <span
-                  className={`rounded-md px-1.5 py-0.5 text-xs font-bold ${item.badgeClass}`}
-                >
-                  שלב {item.step}
-                </span>
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
         </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
           {activeTab === 'settings' ? (
             <HouseholdSettings />
           ) : activeTab === 'coverage' ? (

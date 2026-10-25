@@ -25,6 +25,7 @@ import {
   requestTransactionUpdate,
   TransactionInlineControls,
 } from './TransactionInlineControls.js';
+import { Money } from '../utils/format.js';
 
 interface UploadedFileBuffer {
   filename: string;
@@ -409,7 +410,7 @@ export function StatementCoverage(): React.ReactElement {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
-              העלאת קובצי דפי פירוט (Batch Upload — גרירה או בחירת קבצים)
+              העלאת קובצי דפי פירוט (גרירה או בחירת קבצים)
             </h3>
             <p className="mt-1 text-xs text-slate-600">
               גרור לכאן או בחר קובץ אחד או יותר של ישראכרט / אמריקן אקספרס.
@@ -547,11 +548,9 @@ export function StatementCoverage(): React.ReactElement {
                             >
                               {hasStmt ? (
                                 <div className="inline-flex flex-col rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-800 ring-1 ring-emerald-600/20">
-                                  <span className="font-semibold">
-                                    הועלה • ₪
-                                    {(
-                                      cell?.totalBilledIls ?? 0
-                                    ).toLocaleString('he-IL')}
+                                  <span className="font-semibold flex items-center gap-1">
+                                    <span>הועלה •</span>
+                                    <Money amount={cell?.totalBilledIls ?? 0} />
                                   </span>
                                   <span className="text-[11px] text-emerald-600">
                                     {cell?.transactionsCount ?? 0} עסקאות
@@ -687,14 +686,8 @@ export function StatementCoverage(): React.ReactElement {
                       </span>
                     ) : null}
                   </td>
-                  <td
-                    className={`px-4 py-2.5 font-semibold ${
-                      tx.billedAmountIls < 0
-                        ? 'text-emerald-700'
-                        : 'text-slate-900'
-                    }`}
-                  >
-                    ₪{tx.billedAmountIls.toLocaleString('he-IL')}
+                  <td className="px-4 py-2.5 font-semibold">
+                    <Money amount={tx.billedAmountIls} colored />
                   </td>
                 </tr>
               ))}

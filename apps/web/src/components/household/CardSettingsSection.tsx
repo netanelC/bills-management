@@ -74,7 +74,7 @@ export function CardSettingsSection({
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h3 className="text-base font-semibold text-slate-900">
-        כרטיסי אשראי רשומים (Cards)
+        כרטיסי אשראי רשומים
       </h3>
       <p className="mt-1 text-xs text-slate-500">
         כרטיסי ישראכרט ואמריקן אקספרס של משק הבית המזוהים לפי 4 ספרות אחרונות.

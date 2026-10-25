@@ -16,17 +16,17 @@ const SPENDING_NATURE_META: Record<
   { title: string; subtitle: string; badgeClass: string }
 > = {
   FIXED: {
-    title: 'הוצאות קבועות (Fixed)',
+    title: 'הוצאות קבועות',
     subtitle: 'חשבונות, תקשורת, ביטוחים והתחייבויות קשיחות',
     badgeClass: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   },
   VARIABLE: {
-    title: 'הוצאות מחיה משתנות (Variable)',
+    title: 'הוצאות מחיה משתנות',
     subtitle: 'קניות לסופרמרקט, פארם, דלק ותחזוקה שוטפת',
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   },
   DISCRETIONARY: {
-    title: 'פינוקים ופנאי (Discretionary)',
+    title: 'פינוקים ופנאי',
     subtitle: 'מסעדות, שופינג, בילויים, חופשות ומתנות',
     badgeClass: 'bg-rose-50 text-rose-700 ring-rose-600/20',
   },
@@ -101,11 +101,10 @@ export function CategorySettingsSection({
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h3 className="text-base font-semibold text-slate-900">
-        קטלוג קטגוריות ויעדי תקציב (Categories & Budget Targets)
+        קטלוג קטגוריות ויעדי תקציב
       </h3>
       <p className="mt-1 text-xs text-slate-500">
-        הקטגוריות מחולקות לפי אופי הוצאה (`Spending Nature`). ניתן להוסיף,
-        לערוך ולהגדיר יעד תקציב חודשי בש"ח (`Budget Target`).
+        הקטגוריות מחולקות לפי אופי הוצאה. ניתן להוסיף, לערוך ולהגדיר יעד תקציב חודשי בש&quot;ח.
       </p>
 
       <form

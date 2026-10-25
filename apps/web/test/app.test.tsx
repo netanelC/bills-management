@@ -35,7 +35,7 @@ describe('Hebrew RTL Application Shell', () => {
     expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('health-indicator')).toHaveTextContent(
-        `מחובר לשרת (${expectedTables} טבלאות)`,
+        'מסונכרן',
       );
     });
   });

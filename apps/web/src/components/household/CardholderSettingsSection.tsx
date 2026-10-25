@@ -17,7 +17,7 @@ export function CardholderSettingsSection({
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h3 className="text-base font-semibold text-slate-900">
-        מחזיקי כרטיס (Cardholders)
+        מחזיקי כרטיס
       </h3>
       <p className="mt-1 text-xs text-slate-500">
         שני פרופילי ברירת המחדל של משק הבית – ניתן לערוך את שמות התצוגה.
