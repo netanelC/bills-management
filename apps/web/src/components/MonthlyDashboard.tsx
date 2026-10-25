@@ -776,7 +776,7 @@ export function MonthlyDashboard(): React.ReactElement {
 
           <input
             type="search"
-            placeholder="חיפוש חופשי לפי בית עסק או הערה..."
+            placeholder="חיפוש חופשי לפי בית עסק..."
             aria-label="חיפוש חופשי בעסקאות"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -801,7 +801,7 @@ export function MonthlyDashboard(): React.ReactElement {
                   כרטיס ומחזיק
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  קטגוריה והערות
+                  קטגוריה
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
                   סכום חיוב בש&quot;ח

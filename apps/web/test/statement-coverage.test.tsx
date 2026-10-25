@@ -5,6 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import type {
   CardDto,
   CardholderDto,
+  CategoryDto,
   CoverageMatrixResponseDto,
   StatementPreviewResponseDto,
   TransactionListItemDto,
@@ -170,8 +171,18 @@ function buildTestScenario() {
     ],
   };
 
+  const sampleCategory: CategoryDto = {
+    id: faker.string.uuid(),
+    name: 'מזון וקניות',
+    spendingNature: 'VARIABLE',
+    color: '#10b981',
+    budgetTargetIls: null,
+    sortOrder: 1,
+  };
+
   return {
     cardholders: [primaryHolder, spouseHolder],
+    categories: [sampleCategory],
     existingCard,
     missingCard,
     billingMonth,
@@ -316,7 +327,7 @@ describe('StatementCoverage Component', () => {
     });
   });
 
-  it('When updating Notes on a row in the Transaction table, Then it sends PATCH /api/transactions/:id', async () => {
+  it('When changing Category Override on a row in the Transaction table, Then it sends PATCH /api/transactions/:id', async () => {
     // Arrange
     const scenario = buildTestScenario();
     const targetTx = scenario.transactions[0]!;
@@ -329,7 +340,7 @@ describe('StatementCoverage Component', () => {
         return createJsonResponse({ cardholders: scenario.cardholders });
       }
       if (url === '/api/categories') {
-        return createJsonResponse({ categories: [] });
+        return createJsonResponse({ categories: scenario.categories });
       }
       if (url === '/api/coverage') {
         return createJsonResponse(scenario.coverage);
@@ -339,23 +350,29 @@ describe('StatementCoverage Component', () => {
       }
       if (url === `/api/transactions/${targetTx.id}` && method === 'PATCH') {
         patchedTxBody = JSON.parse(String(init?.body));
-        return createJsonResponse({ ...targetTx, notes: 'הערה לבדיקה' });
+        return createJsonResponse({
+          ...targetTx,
+          categoryOverrideId: scenario.categories[0]?.id,
+        });
       }
       return createJsonResponse({});
     });
 
     render(<StatementCoverage />);
-    const notesInput = await screen.findByLabelText(
-      `הערה עבור ${targetTx.rawMerchantName} (${targetTx.purchaseDate})`,
+    const categorySelect = await screen.findByLabelText(
+      `סיווג עסקה ${targetTx.rawMerchantName} (${targetTx.purchaseDate})`,
     );
 
     // Act
-    fireEvent.change(notesInput, { target: { value: 'הערה לבדיקה' } });
-    fireEvent.blur(notesInput);
+    fireEvent.change(categorySelect, {
+      target: { value: scenario.categories[0]?.id },
+    });
 
     // Assert
     await waitFor(() => {
-      expect(patchedTxBody).toEqual({ notes: 'הערה לבדיקה' });
+      expect(patchedTxBody).toEqual({
+        categoryOverrideId: scenario.categories[0]?.id,
+      });
     });
   });
 });

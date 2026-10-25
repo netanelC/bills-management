@@ -635,7 +635,7 @@ export function StatementCoverage(): React.ReactElement {
                   כרטיס
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  קטגוריה והערות
+                  קטגוריה
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
                   תשלומים / מט&quot;ח
