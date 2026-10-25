@@ -12,32 +12,37 @@ interface NavStep {
   step: number;
   label: string;
   description: string;
+  icon: string;
 }
 
 const STEPS: readonly NavStep[] = [
   {
-    id: 'settings',
+    id: 'dashboard',
     step: 1,
-    label: 'הגדרות',
-    description: 'כרטיסים ומחזיקים',
-  },
-  {
-    id: 'coverage',
-    step: 2,
-    label: 'קליטה וכיסוי',
-    description: 'העלאת דפי פירוט',
+    label: 'דשבורד חודשי',
+    description: 'מעקב, תקציב וניתוח',
+    icon: '📊',
   },
   {
     id: 'inbox',
-    step: 3,
+    step: 2,
     label: 'תיבת סיווג',
     description: 'שיוך מהיר וחוקים',
+    icon: '🏷️',
   },
   {
-    id: 'dashboard',
+    id: 'coverage',
+    step: 3,
+    label: 'קליטה וכיסוי',
+    description: 'העלאת דפי פירוט',
+    icon: '📥',
+  },
+  {
+    id: 'settings',
     step: 4,
-    label: 'דשבורד חודשי',
-    description: 'מעקב, תקציב וניתוח',
+    label: 'הגדרות',
+    description: 'כרטיסים ומחזיקים',
+    icon: '⚙️',
   },
 ];
 
@@ -75,117 +80,107 @@ export function App(): React.ReactElement {
   }, []);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xs shadow-xs">
-        {/* Top Branding & Status */}
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg font-black text-white shadow-sm ring-2 ring-indigo-100">
-              ₪
-            </span>
-            <div>
-              <h1 className="text-base font-bold text-slate-900 tracking-tight">
-                ניהול הוצאות משק בית
-              </h1>
-              <p className="text-xs text-slate-500">
-                קליטת פירוטים • סיווג מהיר • מעקב תקציב
-              </p>
+    <div dir="rtl" className="min-h-screen bg-slate-50/70 text-slate-900 md:flex">
+      {/* 🧭 Right Sidebar (RTL - Fixed & Sticky) */}
+      <aside className="w-full md:w-72 lg:w-80 shrink-0 border-b md:border-b-0 md:border-l border-slate-200 bg-white md:min-h-screen md:sticky md:top-0 md:h-screen flex flex-col justify-between overflow-y-auto z-30 shadow-xs">
+        <div className="p-4 sm:p-5">
+          {/* Top Branding & Status */}
+          <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg font-black text-white shadow-sm ring-2 ring-indigo-100">
+                ₪
+              </span>
+              <div>
+                <h1 className="text-base font-bold text-slate-900 tracking-tight leading-tight">
+                  ניהול הוצאות
+                </h1>
+                <p className="text-[11px] text-slate-400">משק בית חכם</p>
+              </div>
+            </div>
+
+            {/* Status indicator */}
+            <div
+              data-testid="health-indicator"
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                health
+                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+                  : healthError
+                    ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20'
+                    : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                {health && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                )}
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${
+                    health
+                      ? 'bg-emerald-500'
+                      : healthError
+                        ? 'bg-rose-500'
+                        : 'bg-slate-400'
+                  }`}
+                />
+              </span>
+              <span>{health ? 'מסונכרן' : healthError ? 'שגיאת חיבור' : 'סנכרון...'}</span>
             </div>
           </div>
 
-          {/* Elegant Status Indicator */}
+          {/* Navigation Items (Vertical List) */}
+          <nav aria-label="ניווט ראשי" className="mt-4 space-y-1.5">
+            {STEPS.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-right transition-all ${
+                    isActive
+                      ? 'bg-indigo-50/80 text-indigo-950 font-bold shadow-2xs ring-1 ring-indigo-200/80 border-r-4 border-indigo-600'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+                  }`}
+                >
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs sm:text-sm font-bold truncate">
+                      {item.label}
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate font-normal">
+                      {item.description}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* 🎯 Contextual Sticky Slot for Dashboard Filters */}
           <div
-            data-testid="health-indicator"
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold shadow-2xs transition-all ${
-              health
-                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
-                : healthError
-                  ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20'
-                  : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            <span className="relative flex h-2 w-2">
-              {health && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              )}
-              <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${
-                  health
-                    ? 'bg-emerald-500'
-                    : healthError
-                      ? 'bg-rose-500'
-                      : 'bg-slate-400'
-                }`}
-              />
-            </span>
-            <span>
-              {health
-                ? 'מסונכרן'
-                : healthError
-                  ? 'שגיאת חיבור לשרת'
-                  : 'בודק סנכרון...'}
-            </span>
-          </div>
+            id="sidebar-filters-slot"
+            className={activeTab === 'dashboard' ? 'mt-4 border-t border-slate-100 pt-3' : 'hidden'}
+          />
         </div>
 
-        {/* Single Unified Stepper Navigation Bar (RTL 1 -> 4) */}
-        <nav
-          aria-label="שלבי תהליך"
-          className="border-t border-slate-100 bg-slate-50/60"
-        >
-          <div className="mx-auto flex max-w-7xl overflow-x-auto px-6 py-2">
-            <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
-              {STEPS.map((item, idx) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <React.Fragment key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(item.id)}
-                      className={`group flex flex-1 items-center gap-3 rounded-xl px-3 py-2 text-right transition-all ${
-                        isActive
-                          ? 'bg-white shadow-xs ring-1 ring-slate-200/80 border-b-2 border-indigo-600'
-                          : 'hover:bg-white/60 hover:text-slate-900 text-slate-600'
-                      }`}
-                    >
-                      <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black transition-colors ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-slate-200/80 text-slate-600 group-hover:bg-slate-300'
-                        }`}
-                      >
-                        {item.step}
-                      </span>
-                      <div className="min-w-0">
-                        <div
-                          className={`text-xs sm:text-sm font-bold truncate ${
-                            isActive ? 'text-indigo-900' : 'text-slate-700'
-                          }`}
-                        >
-                          {item.label}
-                        </div>
-                        <div className="hidden sm:block text-[11px] text-slate-400 truncate">
-                          {item.description}
-                        </div>
-                      </div>
-                    </button>
+        {/* Footer info in sidebar */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>ניהול הוצאות משק בית</span>
+          <span className="font-mono">v1.2</span>
+        </div>
+      </aside>
 
-                    {idx < STEPS.length - 1 && (
-                      <span className="text-slate-300 select-none font-bold text-sm">
-                        ←
-                      </span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
-        </nav>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
+      {/* 🖥️ Main Scroll-Free Content Area */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs min-h-[calc(100vh-4rem)]">
           {activeTab === 'settings' ? (
             <HouseholdSettings />
           ) : activeTab === 'coverage' ? (
