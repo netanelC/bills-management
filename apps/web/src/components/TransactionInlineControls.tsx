@@ -86,22 +86,6 @@ export function TransactionInlineControls({
         }}
         className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
       />
-
-      <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
-        <input
-          type="checkbox"
-          data-testid={`exclude-tx-${transaction.id}`}
-          aria-label={`החרג עסקה ${transaction.rawMerchantName} (${transaction.purchaseDate})`}
-          checked={transaction.isExcluded}
-          onChange={(e) =>
-            void onUpdate(transaction.id, {
-              isExcluded: e.target.checked,
-            })
-          }
-          className="rounded border-slate-300 text-indigo-600"
-        />
-        <span>החרג</span>
-      </label>
     </div>
   );
 }

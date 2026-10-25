@@ -69,9 +69,9 @@ function buildInboxScenario() {
 
   const secondMerchant: MerchantDto = {
     id: faker.string.uuid(),
-    canonicalName: `BIT ${faker.word.noun()}`,
-    defaultCategoryId: null,
-    defaultCategoryName: null,
+    canonicalName: `קפה ${faker.word.noun()}`,
+    defaultCategoryId: diningCategory.id,
+    defaultCategoryName: diningCategory.name,
     isAmbiguous: false,
     createdAt: faker.date.recent().toISOString(),
     aliases: [],
@@ -94,50 +94,7 @@ function buildInboxScenario() {
         },
       ],
     },
-    {
-      merchant: secondMerchant,
-      transactionCount: secondTxCount,
-      totalBilledIls: sampleAmountTwo,
-      sampleTransactions: [
-        {
-          id: faker.string.uuid(),
-          purchaseDate: sampleDate,
-          rawMerchantName: secondMerchant.canonicalName,
-          billedAmountIls: sampleAmountTwo,
-          cardNickname: `אמקס ${faker.word.noun()}`,
-        },
-      ],
-    },
   ];
-
-  const sampleBillingMonth = `${faker.number.int({ min: 2024, max: 2027 })}-${String(faker.number.int({ min: 1, max: 12 })).padStart(2, '0')}` as const;
-
-  const ambiguousTx = {
-    id: faker.string.uuid(),
-    statementId: faker.string.uuid(),
-    cardId: faker.string.uuid(),
-    cardLastFourDigits: faker.string.numeric(4),
-    cardNickname: `ישראכרט ${faker.word.noun()}`,
-    cardProvider: 'ISRACARD' as const,
-    cardholderId: faker.string.uuid(),
-    cardholderName: `מחזיק-${faker.person.firstName()}`,
-    merchantId: secondMerchant.id,
-    merchantName: secondMerchant.canonicalName,
-    billingMonth: sampleBillingMonth,
-    purchaseDate: sampleDate,
-    rawMerchantName: `BIT ${faker.word.noun()}`,
-    billedAmountIls: sampleAmountTwo,
-    originalAmount: sampleAmountTwo,
-    originalCurrency: 'ILS',
-    installmentCurrent: null,
-    installmentTotal: null,
-    installmentTotalAmountIls: null,
-    categoryOverrideId: null,
-    effectiveCategoryId: null,
-    effectiveCategoryName: null,
-    notes: null,
-    isExcluded: false,
-  };
 
   const inbox: InboxResponseDto = {
     totalInboxCount: uncategorizedMerchants.length,
@@ -151,9 +108,6 @@ function buildInboxScenario() {
     diningCategory,
     firstMerchant,
     secondMerchant,
-    ambiguousTx,
-    sampleDate,
-    sampleAmountOne,
     inbox,
   };
 }
@@ -188,13 +142,10 @@ describe('UncategorizedInbox Component', () => {
         method === 'PATCH'
       ) {
         patchedBody = JSON.parse(String(init?.body));
-        const remainingMerchants = currentInbox.uncategorizedMerchants.filter(
-          (m) => m.merchant.id !== scenario.firstMerchant.id,
-        );
         currentInbox = {
           ...currentInbox,
-          totalInboxCount: remainingMerchants.length,
-          uncategorizedMerchants: remainingMerchants,
+          totalInboxCount: 0,
+          uncategorizedMerchants: [],
         };
         return createJsonResponse({
           ...scenario.firstMerchant,
@@ -220,14 +171,14 @@ describe('UncategorizedInbox Component', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.getByTestId('inbox-badge-count')).toHaveTextContent('1');
+      expect(screen.getByTestId('inbox-badge-count')).toHaveTextContent('0');
     });
   });
 
-  it('When merging a source Merchant into a target Merchant, Then it sends POST /api/merchants/merge', async () => {
+  it('When adding an Alias rule to a Merchant, Then it sends PATCH /api/merchants/:id with addAlias', async () => {
     // Arrange
     const scenario = buildInboxScenario();
-    let mergePayload: unknown = null;
+    let patchedBody: unknown = null;
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString();
@@ -243,47 +194,40 @@ describe('UncategorizedInbox Component', () => {
           merchants: [scenario.firstMerchant, scenario.secondMerchant],
         });
       }
-      if (url === '/api/merchants/merge' && method === 'POST') {
-        mergePayload = JSON.parse(String(init?.body));
-        return createJsonResponse({
-          mergedMerchant: scenario.firstMerchant,
-          reassignedTransactionsCount: scenario.secondMerchant.transactionCount,
-        });
+      if (
+        url === `/api/merchants/${scenario.firstMerchant.id}` &&
+        method === 'PATCH'
+      ) {
+        patchedBody = JSON.parse(String(init?.body));
+        return createJsonResponse(scenario.firstMerchant);
       }
       return createJsonResponse({});
     });
 
     render(<UncategorizedInbox />);
-    const targetSelect = await screen.findByLabelText('בית עסק יעד למיזוג');
-    fireEvent.change(targetSelect, {
-      target: { value: scenario.firstMerchant.id },
-    });
-    const sourceCheckbox = await screen.findByLabelText(
-      `מזג את ${scenario.secondMerchant.canonicalName}`,
+    const aliasInput = await screen.findByLabelText(
+      `תבנית זיהוי עבור ${scenario.firstMerchant.canonicalName}`,
     );
-    fireEvent.click(sourceCheckbox);
+    fireEvent.change(aliasInput, { target: { value: 'סניף מרכז' } });
 
     // Act
-    fireEvent.click(screen.getByRole('button', { name: 'מזג בתי עסק' }));
+    fireEvent.click(screen.getByRole('button', { name: 'הוסף כלל זיהוי' }));
 
     // Assert
     await waitFor(() => {
-      expect(mergePayload).toEqual({
-        targetMerchantId: scenario.firstMerchant.id,
-        sourceMerchantIds: [scenario.secondMerchant.id],
+      expect(patchedBody).toEqual({
+        addAlias: {
+          pattern: 'סניף מרכז',
+          matchType: 'CONTAINS',
+        },
       });
     });
   });
 
-  it('When an Ambiguous Merchant Transaction is displayed in the Uncategorized Inbox, Then selecting a Category Override sends PATCH /api/transactions/:id', async () => {
+  it('When changing category of a categorized Merchant in the directory, Then it sends PATCH /api/merchants/:id', async () => {
     // Arrange
     const scenario = buildInboxScenario();
-    const inboxWithAmbiguous: InboxResponseDto = {
-      ...scenario.inbox,
-      totalInboxCount: scenario.inbox.uncategorizedMerchants.length + 1,
-      ambiguousTransactions: [scenario.ambiguousTx],
-    };
-    let patchedTransactionPayload: unknown = null;
+    let patchedBody: unknown = null;
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString();
@@ -292,7 +236,7 @@ describe('UncategorizedInbox Component', () => {
         return createJsonResponse({ categories: scenario.categories });
       }
       if (url === '/api/inbox' && method === 'GET') {
-        return createJsonResponse(inboxWithAmbiguous);
+        return createJsonResponse(scenario.inbox);
       }
       if (url === '/api/merchants' && method === 'GET') {
         return createJsonResponse({
@@ -300,36 +244,28 @@ describe('UncategorizedInbox Component', () => {
         });
       }
       if (
-        url === `/api/transactions/${scenario.ambiguousTx.id}` &&
+        url === `/api/merchants/${scenario.secondMerchant.id}` &&
         method === 'PATCH'
       ) {
-        patchedTransactionPayload = JSON.parse(String(init?.body));
-        return createJsonResponse({
-          ...scenario.ambiguousTx,
-          categoryOverrideId: scenario.diningCategory.id,
-          effectiveCategoryId: scenario.diningCategory.id,
-          effectiveCategoryName: scenario.diningCategory.name,
-        });
+        patchedBody = JSON.parse(String(init?.body));
+        return createJsonResponse(scenario.secondMerchant);
       }
       return createJsonResponse({});
     });
 
     render(<UncategorizedInbox />);
-    const overrideSelect = await screen.findByLabelText(
-      `סיווג עסקה ${scenario.ambiguousTx.rawMerchantName} (${scenario.ambiguousTx.purchaseDate})`,
+    const dirSelect = await screen.findByLabelText(
+      `שנה קטגוריה עבור ${scenario.secondMerchant.canonicalName}`,
     );
 
     // Act
-    fireEvent.change(overrideSelect, { target: { value: scenario.diningCategory.id } });
+    fireEvent.change(dirSelect, { target: { value: scenario.groceriesCategory.id } });
 
     // Assert
     await waitFor(() => {
-      expect(patchedTransactionPayload).toEqual({
-        categoryOverrideId: scenario.diningCategory.id,
+      expect(patchedBody).toEqual({
+        defaultCategoryId: scenario.groceriesCategory.id,
       });
     });
-    expect(
-      screen.getByTestId(`inbox-ambiguous-tx-${scenario.ambiguousTx.id}`),
-    ).toHaveTextContent(scenario.ambiguousTx.cardholderName);
   });
 });

@@ -7,12 +7,7 @@ import {
   type InboxResponseDto,
   type MerchantAliasMatchType,
   type MerchantDto,
-  type UpdateTransactionInput,
 } from '@bills/shared';
-import {
-  requestTransactionUpdate,
-  TransactionInlineControls,
-} from './TransactionInlineControls.js';
 
 interface AliasDraft {
   pattern: string;
@@ -30,8 +25,6 @@ export function UncategorizedInbox(): React.ReactElement {
   const [aliasDraftByMerchant, setAliasDraftByMerchant] = useState<
     Record<string, AliasDraft>
   >({});
-  const [targetMerchantId, setTargetMerchantId] = useState<string>('');
-  const [sourceMerchantIds, setSourceMerchantIds] = useState<string[]>([]);
 
   const loadInboxData = useCallback(async (): Promise<void> => {
     try {
@@ -92,33 +85,6 @@ export function UncategorizedInbox(): React.ReactElement {
     }
   }
 
-  async function handleToggleAmbiguous(
-    merchantId: string,
-    isAmbiguous: boolean,
-  ): Promise<void> {
-    try {
-      setErrorMessage(null);
-      const res = await fetch(`/api/merchants/${merchantId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isAmbiguous }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      setStatusMessage(
-        isAmbiguous
-          ? 'בית העסק סומן כדו-משמעי (Ambiguous Merchant)'
-          : 'סימון דו-משמעי הוסר מבית העסק',
-      );
-      await loadInboxData();
-    } catch {
-      setErrorMessage('שגיאה בעדכון הגדרת בית עסק דו-משמעי');
-    }
-  }
-
   async function handleAddAlias(merchantId: string): Promise<void> {
     const draft = aliasDraftByMerchant[merchantId];
     if (!draft || !draft.pattern.trim()) {
@@ -153,66 +119,9 @@ export function UncategorizedInbox(): React.ReactElement {
     }
   }
 
-  function toggleSourceMerchantSelection(merchantId: string): void {
-    setSourceMerchantIds((prev) =>
-      prev.includes(merchantId)
-        ? prev.filter((id) => id !== merchantId)
-        : [...prev, merchantId],
-    );
-  }
-
-  async function handleMergeMerchants(
-    event: React.FormEvent<HTMLFormElement>,
-  ): Promise<void> {
-    event.preventDefault();
-    const validSourceIds = sourceMerchantIds.filter(
-      (id) => id !== targetMerchantId,
-    );
-    if (!targetMerchantId || validSourceIds.length === 0) {
-      return;
-    }
-
-    try {
-      setErrorMessage(null);
-      const res = await fetch('/api/merchants/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetMerchantId,
-          sourceMerchantIds: validSourceIds,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      setStatusMessage('בתי העסק מוזגו בהצלחה וכל העסקאות הועברו ליעד');
-      setSourceMerchantIds([]);
-      await loadInboxData();
-    } catch {
-      setErrorMessage('שגיאה במיזוג בתי העסק');
-    }
-  }
-
-  async function handleUpdateTransaction(
-    transactionId: string,
-    payload: UpdateTransactionInput,
-  ): Promise<void> {
-    try {
-      setErrorMessage(null);
-      await requestTransactionUpdate(transactionId, payload);
-      setStatusMessage('פרטי העסקה עודכנו בהצלחה');
-      await loadInboxData();
-    } catch {
-      setErrorMessage('שגיאה בעדכון העסקה');
-    }
-  }
-
   const uncategorizedList = inbox?.uncategorizedMerchants ?? [];
-  const ambiguousTransactions = inbox?.ambiguousTransactions ?? [];
-  const categorizedOrAmbiguousMerchants = merchants.filter(
-    (m) => m.defaultCategoryId !== null || m.isAmbiguous,
+  const categorizedMerchants = merchants.filter(
+    (m) => m.defaultCategoryId !== null,
   );
 
   return (
@@ -229,18 +138,15 @@ export function UncategorizedInbox(): React.ReactElement {
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
-            בתי עסק ללא קטגוריה: <strong className="text-slate-900">{inbox?.uncategorizedMerchants.length ?? 0}</strong>
-          </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
-            עסקאות Bit/PayBox לעיון: <strong className="text-slate-900">{inbox?.ambiguousTransactions.length ?? 0}</strong>
+            בתי עסק ללא קטגוריה: <strong className="text-slate-900">{uncategorizedList.length}</strong>
           </span>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-900 ring-1 ring-amber-600/20">
-            <span>סה&quot;כ ממתינים:</span>
+            <span>סה&quot;כ ממתינים לסיווג:</span>
             <span
               data-testid="inbox-badge-count"
               className="rounded-full bg-amber-600 px-2 py-0.5 text-white"
             >
-              {inbox?.totalInboxCount ?? 0}
+              {uncategorizedList.length}
             </span>
           </div>
         </div>
@@ -273,7 +179,7 @@ export function UncategorizedInbox(): React.ReactElement {
       {/* Uncategorized Merchants Section */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold text-slate-900">
-          בתי עסק ללא קטגוריית ברירת מחדל ({uncategorizedList.length})
+          בתי עסק הממתינים לשיוך קטגוריה ({uncategorizedList.length})
         </h3>
 
         {uncategorizedList.length === 0 ? (
@@ -339,19 +245,6 @@ export function UncategorizedInbox(): React.ReactElement {
                           </option>
                         ))}
                       </select>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleToggleAmbiguous(
-                            merchant.id,
-                            !merchant.isAmbiguous,
-                          )
-                        }
-                        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
-                      >
-                        סמן כדו-משמעי (Bit / PayBox)
-                      </button>
                     </div>
                   </div>
 
@@ -433,135 +326,14 @@ export function UncategorizedInbox(): React.ReactElement {
         )}
       </section>
 
-      {/* Ambiguous Transactions Section */}
-      {ambiguousTransactions.length > 0 ? (
-        <section className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
-          <h3 className="text-base font-semibold text-amber-950">
-            עסקאות בבתי עסק דו-משמעיים הממתינות לסיווג פרטני (
-            {ambiguousTransactions.length})
-          </h3>
-          <div className="space-y-2.5">
-            {ambiguousTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                data-testid={`inbox-ambiguous-tx-${tx.id}`}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200/80 bg-white p-3 text-xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-slate-900">
-                      {tx.rawMerchantName}
-                    </span>
-                    <span className="text-slate-500">({tx.purchaseDate})</span>
-                    <span className="font-bold text-slate-900">
-                      ₪{tx.billedAmountIls.toLocaleString('he-IL')}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-600">
-                    <span>
-                      כרטיס: {tx.cardNickname} ({tx.cardLastFourDigits})
-                    </span>
-                    <span> • </span>
-                    <span>מחזיק כרטיס: {tx.cardholderName}</span>
-                  </div>
-                </div>
-
-                <TransactionInlineControls
-                  transaction={tx}
-                  categories={categories}
-                  defaultOptionLabel="בחר קטגוריה לעסקה..."
-                  onUpdate={handleUpdateTransaction}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {/* Merge Merchants Section */}
-      <section className="rounded-lg border border-slate-200 bg-slate-50/50 p-5">
-        <h3 className="text-base font-semibold text-slate-900">
-          מיזוג בתי עסק כפולים (Merchant Merge)
-        </h3>
-        <p className="mt-1 text-xs text-slate-600">
-          מזג וריאציות שונות של אותו בית עסק לבית עסק קנוני אחד — כל העסקאות
-          וכללי הזיהוי יועברו אוטומטית.
-        </p>
-
-        <form
-          onSubmit={(e) => void handleMergeMerchants(e)}
-          className="mt-4 grid gap-4 sm:grid-cols-3"
-        >
-          <label className="block text-xs font-medium text-slate-700">
-            בית עסק יעד למיזוג
-            <select
-              aria-label="בית עסק יעד למיזוג"
-              value={targetMerchantId}
-              onChange={(e) => {
-                const nextTarget = e.target.value;
-                setTargetMerchantId(nextTarget);
-                setSourceMerchantIds((prev) =>
-                  prev.filter((id) => id !== nextTarget),
-                );
-              }}
-              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-            >
-              <option value="">בחר בית עסק יעד...</option>
-              {merchants.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.canonicalName} ({m.transactionCount} עסקאות)
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <fieldset className="text-xs font-medium text-slate-700">
-            <legend className="mb-1">
-              בתי עסק מקור למיזוג (ניתן לבחור מספר וריאציות)
-            </legend>
-            <div className="max-h-32 space-y-1.5 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
-              {merchants
-                .filter((m) => m.id !== targetMerchantId)
-                .map((m) => (
-                  <label
-                    key={m.id}
-                    className="flex cursor-pointer items-center gap-2 text-xs text-slate-800"
-                  >
-                    <input
-                      type="checkbox"
-                      aria-label={`מזג את ${m.canonicalName}`}
-                      checked={sourceMerchantIds.includes(m.id)}
-                      onChange={() => toggleSourceMerchantSelection(m.id)}
-                      className="rounded border-slate-300 text-indigo-600"
-                    />
-                    <span>
-                      {m.canonicalName} ({m.transactionCount} עסקאות)
-                    </span>
-                  </label>
-                ))}
-            </div>
-          </fieldset>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-            >
-              מזג בתי עסק
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Categorized & Ambiguous Merchants Directory */}
-      {categorizedOrAmbiguousMerchants.length > 0 ? (
+      {/* Categorized Merchants Directory */}
+      {categorizedMerchants.length > 0 ? (
         <section className="space-y-3">
           <h3 className="text-base font-semibold text-slate-900">
-            ספריית בתי עסק מסווגים ודו-משמעיים (
-            {categorizedOrAmbiguousMerchants.length})
+            ספריית בתי עסק מסווגים ({categorizedMerchants.length})
           </h3>
           <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-            {categorizedOrAmbiguousMerchants.map((merchant) => (
+            {categorizedMerchants.map((merchant) => (
               <div
                 key={merchant.id}
                 data-testid={`directory-merchant-${merchant.id}`}
@@ -575,11 +347,6 @@ export function UncategorizedInbox(): React.ReactElement {
                     {merchant.defaultCategoryName ? (
                       <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
                         {merchant.defaultCategoryName}
-                      </span>
-                    ) : null}
-                    {merchant.isAmbiguous ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                        דו-משמעי
                       </span>
                     ) : null}
                   </div>
@@ -605,21 +372,6 @@ export function UncategorizedInbox(): React.ReactElement {
                       </option>
                     ))}
                   </select>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void handleToggleAmbiguous(
-                        merchant.id,
-                        !merchant.isAmbiguous,
-                      )
-                    }
-                    className="rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                  >
-                    {merchant.isAmbiguous
-                      ? 'בטל סימון דו-משמעי'
-                      : 'סמן כדו-משמעי'}
-                  </button>
                 </div>
               </div>
             ))}

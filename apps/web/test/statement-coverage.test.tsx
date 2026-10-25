@@ -316,7 +316,7 @@ describe('StatementCoverage Component', () => {
     });
   });
 
-  it('When toggling Excluded Transaction on a row in the Transaction table, Then it sends PATCH /api/transactions/:id', async () => {
+  it('When updating Notes on a row in the Transaction table, Then it sends PATCH /api/transactions/:id', async () => {
     // Arrange
     const scenario = buildTestScenario();
     const targetTx = scenario.transactions[0]!;
@@ -339,22 +339,23 @@ describe('StatementCoverage Component', () => {
       }
       if (url === `/api/transactions/${targetTx.id}` && method === 'PATCH') {
         patchedTxBody = JSON.parse(String(init?.body));
-        return createJsonResponse({ ...targetTx, isExcluded: true });
+        return createJsonResponse({ ...targetTx, notes: 'הערה לבדיקה' });
       }
       return createJsonResponse({});
     });
 
     render(<StatementCoverage />);
-    const excludeCheckbox = await screen.findByLabelText(
-      `החרג עסקה ${targetTx.rawMerchantName} (${targetTx.purchaseDate})`,
+    const notesInput = await screen.findByLabelText(
+      `הערה עבור ${targetTx.rawMerchantName} (${targetTx.purchaseDate})`,
     );
 
     // Act
-    fireEvent.click(excludeCheckbox);
+    fireEvent.change(notesInput, { target: { value: 'הערה לבדיקה' } });
+    fireEvent.blur(notesInput);
 
     // Assert
     await waitFor(() => {
-      expect(patchedTxBody).toEqual({ isExcluded: true });
+      expect(patchedTxBody).toEqual({ notes: 'הערה לבדיקה' });
     });
   });
 });

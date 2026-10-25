@@ -44,7 +44,7 @@ const NAV_ITEMS: readonly NavItem[] = [
     step: 3,
     label: 'תיבת סיווג',
     guideLabel: 'סיווג עסקאות',
-    shortDesc: 'עסקים חדשים ו-Bit',
+    shortDesc: 'שיוך קטגוריות לבתי עסק',
     badgeClass: 'bg-amber-100 text-amber-800',
     activeBorder: 'border-amber-500',
     activeText: 'text-amber-700 font-bold',

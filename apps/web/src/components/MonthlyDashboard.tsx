@@ -801,7 +801,7 @@ export function MonthlyDashboard(): React.ReactElement {
                   כרטיס ומחזיק
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
-                  קטגוריה, הערות והחרגה
+                  קטגוריה והערות
                 </th>
                 <th className="px-4 py-2.5 font-semibold text-slate-700">
                   סכום חיוב בש&quot;ח
@@ -810,10 +810,7 @@ export function MonthlyDashboard(): React.ReactElement {
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {transactions.map((tx) => (
-                <tr
-                  key={tx.id}
-                  className={tx.isExcluded ? 'bg-slate-50/70 opacity-60' : ''}
-                >
+                <tr key={tx.id}>
                   <td className="px-4 py-2.5 text-slate-600">
                     {tx.purchaseDate}
                   </td>
